@@ -1,4 +1,4 @@
-FROM --platform=${BUILDPLATFORM} ghcr.io/darkness4/withny-dl:latest-darwin-base-${TARGETARCH} AS builder
+FROM --platform=${BUILDPLATFORM} ghcr.io/darkness4/fc2-live-dl-go:latest-darwin-base-${TARGETARCH} AS builder
 
 WORKDIR /work
 COPY go.mod go.sum ./

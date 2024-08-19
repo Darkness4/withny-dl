@@ -138,35 +138,6 @@ docker-static:
 	podman manifest push --all ghcr.io/darkness4/withny-dl:latest "docker://ghcr.io/darkness4/withny-dl:${VERSION_NO_V}"
 	podman manifest push --all ghcr.io/darkness4/withny-dl:latest "docker://ghcr.io/darkness4/withny-dl:dev"
 
-.PHONY: docker-static-base
-docker-static-base:
-	podman build \
-		-t ghcr.io/darkness4/withny-dl:latest-static-base \
-		--platform=linux/amd64 \
-		-f Dockerfile.static-base .
-	podman push ghcr.io/darkness4/withny-dl:latest-static-base
-
-.PHONY: docker-static-windows-base
-docker-static-windows-base:
-	podman build \
-		-t ghcr.io/darkness4/withny-dl:latest-static-windows-base \
-		-f Dockerfile.static-windows-base .
-	podman push ghcr.io/darkness4/withny-dl:latest-static-windows-base
-
-.PHONY: docker-darwin-base
-docker-darwin-base:
-	podman build \
-		-t ghcr.io/darkness4/withny-dl:latest-darwin-base-amd64 \
-		--build-arg TARGET_ARCH=x86_64 \
-		-f Dockerfile.darwin-base .
-	podman push ghcr.io/darkness4/withny-dl:latest-darwin-base-amd64
-	podman build \
-		-t ghcr.io/darkness4/withny-dl:latest-darwin-base-arm64 \
-		--build-arg TARGET_ARCH=aarch64 \
-		--build-arg OSX_VERSION_MIN=11.0 \
-		-f Dockerfile.darwin-base .
-	podman push ghcr.io/darkness4/withny-dl:latest-darwin-base-arm64
-
 .PHONY: version
 version:
 	echo version=$(VERSION)
