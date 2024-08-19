@@ -2,7 +2,6 @@ package api
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -127,16 +126,15 @@ streamLoop:
 		for _, constraint := range constraints {
 			width, height := parseResolution(stream.Resolution)
 			switch {
-			case constraint.MinBandwidth > 0 && stream.Bandwidth <= constraint.MinBandwidth,
-				constraint.MaxBandwidth > 0 && stream.Bandwidth >= constraint.MaxBandwidth,
-				constraint.MinHeight > 0 && int64(height) <= constraint.MinHeight,
-				constraint.MaxHeight > 0 && int64(height) >= constraint.MaxHeight,
-				constraint.MinWidth > 0 && int64(width) <= constraint.MinWidth,
-				constraint.MaxWidth > 0 && int64(width) >= constraint.MaxWidth,
-				constraint.MinFrameRate > 0 && stream.FrameRate <= constraint.MinFrameRate,
-				constraint.MaxFrameRate > 0 && stream.FrameRate >= constraint.MaxFrameRate,
+			case constraint.MinBandwidth > 0 && stream.Bandwidth < constraint.MinBandwidth,
+				constraint.MaxBandwidth > 0 && stream.Bandwidth > constraint.MaxBandwidth,
+				constraint.MinHeight > 0 && int64(height) < constraint.MinHeight,
+				constraint.MaxHeight > 0 && int64(height) > constraint.MaxHeight,
+				constraint.MinWidth > 0 && int64(width) < constraint.MinWidth,
+				constraint.MaxWidth > 0 && int64(width) > constraint.MaxWidth,
+				constraint.MinFrameRate > 0 && stream.FrameRate < constraint.MinFrameRate,
+				constraint.MaxFrameRate > 0 && stream.FrameRate > constraint.MaxFrameRate,
 				constraint.AudioOnly && stream.Video != "audio_only":
-				fmt.Println(stream.Video)
 				continue streamLoop
 			}
 		}
@@ -150,12 +148,9 @@ streamLoop:
 }
 
 func parseResolution(resolution string) (width, height int) {
-	res := strings.Split(resolution, "x")
-	if len(res) != 2 {
-		return 0, 0
-	}
-	width, _ = strconv.Atoi(res[0])
-	height, _ = strconv.Atoi(res[1])
+	w, h, _ := strings.Cut(resolution, "x")
+	width, _ = strconv.Atoi(w)
+	height, _ = strconv.Atoi(h)
 	return width, height
 }
 

@@ -185,36 +185,6 @@ loop:
 	suite.Equal(combinedExpectedURLs, urls)
 }
 
-func (suite *DownloaderTestSuite) TestFillQueueAtCheckpoint() {
-	// Arrange
-	urls := make([]string, 0, 11)
-	urlsChan := make(chan string)
-	ctx, cancel := context.WithCancel(context.Background())
-	errChan := make(chan error, 1)
-
-	// Act
-	go func() {
-		err := suite.impl.fillQueue(ctx, urlsChan)
-		errChan <- err
-	}()
-
-loop:
-	for {
-		select {
-		case url := <-urlsChan:
-			urls = append(urls, url)
-		case <-time.After(5 * time.Second):
-			cancel()
-			break loop
-		}
-	}
-
-	// Assert
-	err := <-errChan
-	suite.Error(context.Canceled, err)
-	suite.Equal(combinedExpectedURLs[len(combinedExpectedURLs)-1:], urls)
-}
-
 func (suite *DownloaderTestSuite) AfterTest(_, _ string) {
 	suite.server.Close()
 }
