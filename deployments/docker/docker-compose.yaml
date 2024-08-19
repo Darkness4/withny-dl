@@ -7,6 +7,8 @@ services:
       - 3000:3000
     user: '${UID}:${GID}'
     volumes:
+      # credentials.txt contains "example" as username and "password" as password, in base64.
+      - ./credentials.txt:/secrets/credentials.txt:ro
       - ./config.yaml:/config/config.yaml:ro
       - ./output:/output
     mem_reservation: 256m

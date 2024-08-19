@@ -5,6 +5,8 @@ metadata:
 data:
   config.yaml: |
 
+    credentialsFile: '/secrets/credentials.txt'
+
     notifier:
       gotify:
         enabled: true
@@ -12,9 +14,7 @@ data:
         token: 'random'
 
     defaultParams:
-      quality: 3Mbps
-      latency: mid
-      outFormat: /output/{{ .ChannelName }} {{ .Labels.EnglishName }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
+      outFormat: /output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
       waitForLive: true
       remux: false
       remuxFormat: mp4
@@ -26,15 +26,5 @@ data:
       extractAudio: true
 
     channels:
-      '40740626':
-        labels:
-          EnglishName: Komae Nadeshiko
-      '72364867':
-        labels:
-          EnglishName: Uno Sakura
-      '81840800':
-        labels:
-          EnglishName: Ronomiya Hinagiku
-      '91544481':
-        labels:
-          EnglishName: Necoma Karin
+      'admin':
+        labels: {}

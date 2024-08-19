@@ -211,7 +211,7 @@ To configure the watcher, you must provide a configuration file. The configurati
 
 ```yaml
 ---
-## Path to the file containing a "usernameB64:passwordB64" pair.
+## [REQUIRED] Path to the file containing a "usernameB64:passwordB64" pair.
 ##
 ## usernameB64 is the base64 encoded username.
 ## passwordB64 is the base64 encoded password.

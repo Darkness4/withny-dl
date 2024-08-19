@@ -66,6 +66,8 @@ spec:
               name: withny-output-claim
             - mountPath: '/config'
               name: withny-config
+            - mountPath: '/secrets'
+              name: credentials-secret
       volumes:
         - name: withny-config
           configMap:
@@ -74,3 +76,7 @@ spec:
         - name: withny-output
           persistentVolumeClaim:
             claimName: withny-output-claim
+        - name: credentials-secret
+          secret:
+            secretName: credentials-secret
+            defaultMode: 0600
