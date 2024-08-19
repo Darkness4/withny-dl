@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base", "schedule:daily"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true
+    },
+    {
+      "matchDatasources": ["docker"],
+      "automerge": false
+    }
+  ],
+  "rebaseWhen": "conflicted",
+  "commitMessagePrefix": "chore(deps):"
+}

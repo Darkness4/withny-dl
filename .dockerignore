@@ -1,0 +1,9 @@
+bin/
+*.mp4
+*.ts
+*.m4a
+*.o
+*.so
+*.a
+target/
+out/

@@ -1,0 +1,246 @@
+---
+## Path to the file containing a "usernameB64:passwordB64" pair.
+##
+## usernameB64 is the base64 encoded username.
+## passwordB64 is the base64 encoded password.
+credentialsFile: ''
+
+defaultParams:
+  ## Quality constraint to select the stream to download.
+  ##
+  ## None means the highest quality available. Constraints are inclusive.
+  ## Recommendation is to set nothing.
+  quality:
+    {}
+    ## Height is usually: 1080, 720, 480, 360, 160
+    # minHeight: 0
+    # maxHeight: 0
+    ## Width is usually: 1920, 1280, 854, 640, 284
+    # minWidth: 0
+    # maxWidth: 0
+    ## Framerate is usually: 60, 30
+    # minFramerate: 0.0
+    # maxFramerate: 0.0
+    ## Bandwidth is in bits/s.
+    # minBandwidth: 0
+    # maxBandwidth: 0
+    # audioOnly: false
+  ## Output format. Uses Golang templating format.
+  ##
+  ## Available fields: ChannelID, ChannelName, Date, Time, Title, Ext, Labels.Key.
+  ## Available format options:
+  ##   ChannelID: sanitized ID of the broadcast
+  ##   ChannelName: sanitized broadcaster's profile name
+  ##   Date: local date YYYY-MM-DD
+  ##   Time: local time HHMMSS
+  ##   Ext: file extension
+  ##   Title: sanitized title of the live broadcast
+  ##   Metadata (object): the full metadata (see withny/api/objects.go for the available field)
+  ##   Labels.Key: custom labels
+  ## (default: "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}")
+  outFormat: '{{ .ChannelID }} {{ .ChannelName }}/{{ .Date }} {{ .Title }}.{{ .Ext }}'
+  ## Allow a maximum of packet loss before aborting stream download. (default: 20)
+  packetLossMax: 20
+  ## Wait until the broadcast goes live, then start recording. (default: true)
+  waitForLive: true
+  ## How many seconds between checks to see if broadcast is live. (default: 5s)
+  waitPollInterval: '5s'
+  ## Remux recordings into mp4/m4a after it is finished. (default: true)
+  remux: true
+  ## Remux format (default: mp4)
+  remuxFormat: 'mp4'
+  ## Concatenate and remux with previous recordings after it is finished. (default: false)
+  ##
+  ## WARNING: We recommend to DISABLE remux since concat also remux.
+  ##
+  ## Input files must be named <name>.<n>.<ts/mp4/mkv...>. If n=0, n is optional.
+  ## Output will be named: "<name>.combined.<remuxFormat>".
+  ##
+  ## n is only used to determine the order. If there are missing fragments,
+  ## the concatenation will still be executed.
+  ##
+  ## The extensions do not matter. A name.1.ts and a name.2.mp4 will still be concatenated together.
+  ## TS files will be prioritized over anything else.
+  ##
+  ## If remux is enabled, remux will be executed first, then the concatenation
+  ## will be executed.
+  ##
+  ## If extractAudio is true, the m4a will be concatenated separatly.
+  ##
+  ## TL;DR: This is to concatenate if there is a crash.
+  concat: false
+  ## Keep the raw .ts recordings after it has been remuxed. (default: false)
+  ##
+  ## If this option is set to false and concat is true, before every "waiting
+  ## for stream to be online", a scan will be executed to detect *.combined.*
+  ## files.
+  ## The scan will be done on the directory of `scanDirectory`.
+  ## If a non-corrupted .combined. file is detected, it will remove .ts older
+  ## than `eligibleForCleaningAge`.
+  ## After the cleaning, the .combined files will be renamed without the
+  ## ".combined" part (if a file already exists due to remux, it won't be renamed).
+  keepIntermediates: false
+  ## Directory to be scanned for .ts files to be deleted after concatenation. (default: '')
+  ##
+  ## Scan is recursive.
+  ##
+  ## Empty value means no scanning.
+  scanDirectory: ''
+  ## Minimum age of .combined files to be eligible for cleaning. (default: 48h)
+  ##
+  ## The minimum should be the expected duration of a stream to avoid any race condition.
+  eligibleForCleaningAge: '48h'
+  ## Delete corrupted .ts recordings. (default: true)
+  deleteCorrupted: true
+  ## Generate an audio-only copy of the stream. (default: false)
+  extractAudio: true
+  ## Map of key/value strings.
+  ##
+  ## The value of the label can be invoked in the go template by using {{ .Labels.Key }}.
+  labels: {}
+
+## A list of channels.
+##
+## The keys are the channel IDs/handles without the '@'.
+channels:
+  'admin':
+    labels:
+      EnglishName: Admin
+
+## Notify about the state of the watcher.
+##
+## See: https://containrrr.dev/shoutrrr/latest
+notifier:
+  enabled: false
+  includeTitleInMessage: false
+  ## Disable priorities if the transport does not support one.
+  noPriority: false
+  urls:
+    - 'gotify://gotify.example.com/token'
+
+  ## The notification formats can be customized.
+  ## Title are automatically prefixed with "withny-dl: "
+  ## If the message is empty, the message will be the title.
+  ## Priorities are following those of android:
+  ## Minimum: 0
+  ## Low: 1-3
+  ## Default: 4-7
+  ## High: 8-10
+  notificationFormats:
+    ## ConfigReloaded is sent when the config is reloaded, i.e. the service restarted.
+    configReloaded:
+      enabled: true
+      # title: "config reloaded"
+      # message: <empty>
+      # priority: 10
+
+    ## LoginFailed happens when the login failed.
+    ## Available fields:
+    ##   - Error
+    loginFailed:
+      enabled: true
+      # title: "login failed"
+      # message: "{{ .Error }}"
+      # priority: 10
+
+    ## Panicked is sent when a critical error happens.
+    ## When this happens, it is recommended to contact the developer and open an issue.
+    ## Available fields:
+    ##   - Capture
+    panicked:
+      enabled: true
+      # title: "panicked"
+      # message: "{{ .Capture }}"
+      # priority: 10
+
+    ## Idle is the initial state.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - Labels
+    idle:
+      enabled: false
+      title: 'watching {{.Labels.EnglishName }}'
+      # title: "watching {{ .ChannelID }}"
+      # message: <empty>
+      # priority: 0
+
+    ## Preparing files happens when the stream is online, but not downloading.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - MetaData
+    ##   - Labels
+    preparingFiles:
+      enabled: false
+      title: 'preparing files for {{ .Labels.EnglishName }}'
+      # title: 'preparing files for {{ .MetaData.ProfileData.Name }}'
+      # message: ''
+      # priority: 0
+
+    ## Downloading happens when the stream is online and has emitted a video stream.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - MetaData
+    ##   - Labels
+    downloading:
+      enabled: true
+      title: '{{ .Labels.EnglishName }} is streaming'
+      # title: "{{ .MetaData.ProfileData.Name }} is streaming"
+      # message: "{{ .MetaData.ChannelData.Title }}"
+      # priority: 7
+
+    ## Post-processing happens when the stream has finished streaming.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - MetaData
+    ##   - Labels
+    postProcessing:
+      enabled: false
+      title: 'post-processing {{ .Labels.EnglishName }}'
+      # title: "post-processing {{ .MetaData.ProfileData.Name }}"
+      # message: "{{ .MetaData.ChannelData.Title }}"
+      # priority: 7
+
+    ## Finished happens when the stream has finished streaming and post-processing is done.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - MetaData
+    ##   - Labels
+    finished:
+      enabled: true
+      title: '{{ .Labels.EnglishName }} stream ended'
+      # title: "{{ .MetaData.ProfileData.Name }} stream ended"
+      # message: "{{ .MetaData.ChannelData.Title }}"
+      # priority: 7
+
+    ## Error happens when something bad happens with the downloading of the stream.
+    ## Error like this can be user or developper related.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - Error
+    ##   - Labels
+    error:
+      enabled: true
+      title: 'stream download of {{ .Labels.EnglishName }} failed'
+      # title: 'stream download of {{ .ChannelID }} failed'
+      # message: '{{ .Error }}'
+      # priority: 10
+
+    ## Canceled happens when a stream download is canceled.
+    ## Available fields:
+    ##   - ChannelID
+    ##   - Labels
+    canceled:
+      enabled: true
+      title: 'stream download of {{ .Labels.EnglishName }} canceled'
+      # title: "stream download of {{ .ChannelID }} canceled"
+      # message: <empty>
+      # priority: 7
+
+    ## UpdateAvailable happens when a new version is available.
+    ## Available fields:
+    ##   - Version
+    updateAvailable:
+      enabled: true
+      # title: "update available ({{ .Version }})"
+      # message: "A new version ({{ .Version }}) of withny-dl is available. Please update."
+      # priority: 7

@@ -1,0 +1,40 @@
+FROM --platform=${BUILDPLATFORM} ghcr.io/darkness4/withny-dl:latest-static-base AS builder
+
+WORKDIR /work
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ARG TARGETARCH
+ARG VERSION=dev
+
+RUN if [ "${TARGETARCH}" = "amd64" ]; then \
+  export GOARCH="amd64"; \
+  elif [ "${TARGETARCH}" = "arm64" ]; then \
+  export GOARCH="arm64"; \
+  export CC="aarch64-gentoo-linux-musl-gcc"; \
+  export CXX="aarch64-gentoo-linux-musl-g++"; \
+  export PKG_CONFIG="aarch64-gentoo-linux-musl-pkg-config"; \
+  elif [ "${TARGETARCH}" = "riscv64" ]; then \
+  export GOARCH="riscv64"; \
+  export CC="riscv64-gentoo-linux-musl-gcc"; \
+  export CXX="riscv64-gentoo-linux-musl-g++"; \
+  export PKG_CONFIG="riscv64-gentoo-linux-musl-pkg-config"; \
+  fi; \
+  CGO_ENABLED=1 GOARCH=${TARGETARCH} make bin/withny-dl-static VERSION=${VERSION}
+
+# Helper container to copy binaries outside the container using podman/buildx export. Unused in production.
+FROM scratch AS export
+
+ARG TARGETARCH
+COPY --from=builder /work/bin/withny-dl-static /withny-dl-linux-${TARGETARCH}
+
+# Running container
+FROM scratch
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /work/bin/withny-dl-static /withny-dl
+
+ENTRYPOINT [ "/withny-dl" ]
+

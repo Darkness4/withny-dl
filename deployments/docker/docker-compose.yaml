@@ -1,0 +1,13 @@
+services:
+  withny:
+    image: ghcr.io/darkness4/withny-dl:latest
+    restart: unless-stopped
+    command: [watch, -c, /config/config.yaml]
+    ports:
+      - 3000:3000
+    user: '${UID}:${GID}'
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - ./output:/output
+    mem_reservation: 256m
+    mem_limit: 1g

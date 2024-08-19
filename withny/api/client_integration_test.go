@@ -1,0 +1,153 @@
+//go:build integration
+
+package api
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/cookiejar"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/Darkness4/withny-dl/utils/secret"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/require"
+)
+
+func TestLogin(t *testing.T) {
+	// Arrange
+	jar, err := cookiejar.New(&cookiejar.Options{})
+	require.NoError(t, err)
+	hclient := &http.Client{Jar: jar, Timeout: time.Minute}
+	credReader := &secret.UserPasswordFromEnv{}
+	email, password, _ := credReader.Read()
+	client := NewClient(hclient, credReader)
+
+	t.Run("Login with credentials", func(t *testing.T) {
+		res, err := client.loginWithCredentials(
+			context.Background(),
+			email, password,
+		)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEmpty(t, res.Token)
+		require.NotEmpty(t, res.RefreshToken)
+		require.NotEmpty(t, res.TokenType)
+		require.Equal(t, "Bearer", res.TokenType)
+		require.NotEmpty(t, res.UUID)
+		time, err := res.GetExpirationTime()
+		require.NoError(t, err)
+		require.NotZero(t, time.Time)
+	})
+
+	t.Run("Login with refresh token", func(t *testing.T) {
+		// Act
+		res, err := client.loginWithCredentials(
+			context.Background(),
+			email, password,
+		)
+		require.NoError(t, err)
+		client.credentials = res
+		time.Sleep(2 * time.Second)
+		res2, err := client.loginWithRefreshToken(
+			context.Background(),
+			res.RefreshToken,
+		)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEmpty(t, res2.Token)
+		require.NotEqual(t, res.Token, res2.Token)
+		require.NotEmpty(t, res2.RefreshToken)
+		require.NotEqual(t, res.RefreshToken, res2.RefreshToken)
+		require.NotEmpty(t, res2.TokenType)
+		require.Equal(t, "Bearer", res2.TokenType)
+		require.NotEmpty(t, res2.UUID)
+		require.Equal(t, res.UUID, res2.UUID)
+		time, err := res.GetExpirationTime()
+		require.NoError(t, err)
+		require.NotZero(t, time.Time)
+		time2, err := res2.GetExpirationTime()
+		require.NoError(t, err)
+		require.NotZero(t, time2.Time)
+		require.Greater(t, time2.Time.Unix(), time.Time.Unix())
+	})
+
+	t.Run("Get user", func(t *testing.T) {
+		// Act
+		const fixture = "admin"
+		const expectedUUID = "b4fa8557-7423-4fde-aec0-54775cea6f74"
+		err := client.Login(context.Background())
+		require.NoError(t, err)
+
+		user, err := client.GetUser(context.Background(), fixture)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEmpty(t, user.ID)
+		require.NotEmpty(t, user.UUID)
+		require.Equal(t, expectedUUID, user.UUID)
+		require.NotEmpty(t, user.Username)
+		require.Equal(t, fixture, user.Username)
+		require.NotEmpty(t, user.Name)
+	})
+
+	t.Run("Get streams", func(t *testing.T) {
+		// Act
+		username := os.Getenv("WITHNY_STREAM_USERNAME")
+		err := client.Login(context.Background())
+		require.NoError(t, err)
+
+		streams, err := client.GetStreams(context.Background(), username)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEmpty(t, streams)
+		require.Greater(t, len(streams), 0)
+	})
+
+	t.Run("Get stream playback URL", func(t *testing.T) {
+		err := client.Login(context.Background())
+		require.NoError(t, err)
+
+		// Act
+		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
+		require.NoError(t, err)
+		require.Greater(t, len(streams), 0)
+
+		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEmpty(t, playbackURL)
+	})
+
+	t.Run("Get playlists", func(t *testing.T) {
+		err := client.Login(context.Background())
+		require.NoError(t, err)
+
+		// Act
+		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
+		require.NoError(t, err)
+		require.Greater(t, len(streams), 0)
+
+		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
+		require.NoError(t, err)
+
+		fmt.Println(playbackURL)
+		playlists, err := client.GetPlaylists(context.Background(), playbackURL)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEmpty(t, playlists)
+		require.Greater(t, len(playlists), 0)
+	})
+}
+
+func init() {
+	_ = godotenv.Load(".env")
+	_ = godotenv.Load(".env.test")
+}

@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: withny
+  labels:
+    app: withny
+spec:
+  selector:
+    matchLabels:
+      app: withny
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: withny
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 2000
+        fsGroup: 2000
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: withny
+          image: ghcr.io/darkness4/withny-dl:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsUser: 1000
+            runAsGroup: 2000
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+          args:
+            - watch
+            - -c
+            - /config/config.yaml
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 3
+            timeoutSeconds: 5
+            httpGet:
+              port: 3000
+              path: /
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            httpGet:
+              port: 3000
+              path: /
+          resources:
+            requests:
+              cpu: '250m'
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: '/output'
+              name: withny-output-claim
+            - mountPath: '/config'
+              name: withny-config
+      volumes:
+        - name: withny-config
+          configMap:
+            name: withny-config
+            defaultMode: 0600
+        - name: withny-output
+          persistentVolumeClaim:
+            claimName: withny-output-claim

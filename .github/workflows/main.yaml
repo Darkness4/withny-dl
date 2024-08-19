@@ -1,0 +1,477 @@
+name: Go CI
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+    branches:
+      - 'main'
+      - 'release/*'
+    paths:
+      - '**.go'
+      - '**.c'
+      - '**.h'
+      - 'Dockerfile*'
+      - '.github/workflows/main.yaml'
+      - 'go.*'
+      - 'Makefile'
+      - 'e2e/**'
+  pull_request:
+    branches:
+      - 'main'
+      - 'release/*'
+
+jobs:
+  lint:
+    name: Lint withny-dl
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build-essential
+        run: |
+          sudo apt update -y
+          sudo apt install -y build-essential libavformat-dev libavcodec-dev libavutil-dev
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: false
+          cache-dependency-path: go.sum
+
+      - name: Download all Go modules
+        run: |
+          go mod download
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout 5m
+
+  test:
+    name: Test withny-dl
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build-essential
+        run: |
+          sudo apt update -y
+          sudo apt install -y build-essential libavformat-dev libavcodec-dev libavutil-dev
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: false
+          cache-dependency-path: go.sum
+
+      - name: Download all Go modules
+        run: |
+          go mod download
+
+      - name: test
+        run: go test -v -race -covermode=atomic -tags=unit -timeout=30s ./...
+
+  build-export-static:
+    name: Build and export withny-dl static Docker
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # needed for signing the images with GitHub OIDC Token
+
+    needs: [lint, test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Context for Buildx
+        run: |
+          docker context create builders
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: latest
+          endpoint: builders
+
+      - name: Install Cosign
+        if: startsWith(github.ref, 'refs/tags')
+        uses: sigstore/cosign-installer@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: docker_meta_dev
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/darkness4/withny-dl
+          tags: |
+            dev
+
+      - name: Build and export dev
+        uses: docker/build-push-action@v6
+        id: build-and-push-dev
+        with:
+          file: Dockerfile.static
+          platforms: linux/amd64,linux/arm64,linux/riscv64
+          push: true
+          build-args: |
+            VERSION=dev
+          tags: ${{ steps.docker_meta_dev.outputs.tags }}
+          labels: ${{ steps.docker_meta_dev.outputs.labels }}
+          annotations: ${{ steps.docker_meta_dev.outputs.annotations }}
+
+      - id: docker_meta
+        uses: docker/metadata-action@v5
+        if: startsWith(github.ref, 'refs/tags')
+        with:
+          images: ghcr.io/darkness4/withny-dl
+          tags: |
+            latest
+            type=semver,pattern={{version}}
+
+      - name: Build and export
+        if: startsWith(github.ref, 'refs/tags')
+        uses: docker/build-push-action@v6
+        id: build-and-push
+        with:
+          file: Dockerfile.static
+          platforms: linux/amd64,linux/arm64,linux/riscv64
+          push: true
+          build-args: |
+            VERSION=v${{ steps.docker_meta.outputs.version }}
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+          annotations: ${{ steps.docker_meta.outputs.annotations }}
+
+      - name: Sign the images with GitHub OIDC Token
+        if: startsWith(github.ref, 'refs/tags')
+        env:
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          TAGS: ${{ steps.docker_meta.outputs.tags }}
+        run: |
+          images=""
+          for tag in ${TAGS}; do
+            images+="${tag}@${DIGEST} "
+          done
+          cosign sign --yes ${images}
+
+      - name: Extract artifacts
+        if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
+        uses: docker/build-push-action@v6
+        with:
+          file: Dockerfile.static
+          platforms: linux/amd64,linux/arm64,linux/riscv64
+          push: false
+          outputs: |
+            type=local,dest=/tmp/out
+          target: export
+          build-args: |
+            VERSION=v${{ steps.docker_meta.outputs.version }}
+
+      - name: Move files
+        if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
+        run: |
+          mkdir -p /tmp/artifacts
+          mv /tmp/out/linux_amd64/withny-dl-linux-amd64 /tmp/artifacts/withny-dl-linux-amd64
+          mv /tmp/out/linux_arm64/withny-dl-linux-arm64 /tmp/artifacts/withny-dl-linux-arm64
+          mv /tmp/out/linux_riscv64/withny-dl-linux-riscv64 /tmp/artifacts/withny-dl-linux-riscv64
+
+      - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries
+          path: /tmp/artifacts
+          if-no-files-found: error
+          retention-days: 1
+
+  e2e:
+    name: End-to-End tests
+
+    runs-on: ubuntu-latest
+
+    needs: [build-export-static]
+
+    if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
+
+    concurrency:
+      group: ${{ github.workflow }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+
+      - name: Add exec permissions
+        run: |
+          chmod +x ./withny-dl-linux-amd64
+
+      - name: Set-up s5cmd
+        uses: peak/action-setup-s5cmd@ff3cec4ad07c245fc26cdbc9f7472c5840459cb1
+        with:
+          version: v2.2.2
+
+      - name: Download test asset
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          S3_ASSET_URL: ${{ secrets.S3_ASSET_URL }}
+          S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+        run: |
+          s5cmd \
+            --endpoint-url "$S3_ENDPOINT_URL" \
+            cp "$S3_ASSET_URL" e2e/test.mp4
+
+      - name: Run e2e tests
+        env:
+          RTMP_URL: ${{ secrets.RTMP_URL }}
+        run: |
+          cd e2e
+          export EXECUTABLE=../withny-dl-linux-amd64
+          ./test.sh
+          ./assert.sh
+
+  build-windows:
+    name: Test Build withny-dl static windows binaries
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Context for Buildx
+        run: |
+          docker context create builders
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: latest
+          endpoint: builders
+
+      - id: docker_meta
+        uses: docker/metadata-action@v5
+        if: startsWith(github.ref, 'refs/tags')
+        with:
+          images: ghcr.io/darkness4/withny-dl
+          tags: |
+            type=semver,pattern={{version}}
+
+      - name: Build & Extract artifacts
+        uses: docker/build-push-action@v6
+        with:
+          file: Dockerfile.static-windows
+          platforms: linux/amd64
+          push: false
+          outputs: |
+            type=local,dest=/tmp/out
+          target: export
+          build-args: |
+            VERSION=v${{ steps.docker_meta.outputs.version }}
+
+      - name: Move files
+        run: |
+          mkdir -p /tmp/artifacts
+          mv /tmp/out/withny-dl-windows-amd64.exe /tmp/artifacts/withny-dl-windows-amd64.exe
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: /tmp/artifacts
+          if-no-files-found: error
+          retention-days: 1
+
+  build-darwin:
+    name: Test Build withny-dl darwin binaries
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Context for Buildx
+        run: |
+          docker context create builders
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: latest
+          endpoint: builders
+
+      - id: docker_meta
+        uses: docker/metadata-action@v5
+        if: startsWith(github.ref, 'refs/tags')
+        with:
+          images: ghcr.io/darkness4/withny-dl
+          tags: |
+            type=semver,pattern={{version}}
+
+      - name: Build & Extract artifacts
+        uses: docker/build-push-action@v6
+        with:
+          file: Dockerfile.darwin
+          platforms: linux/amd64,linux/arm64
+          push: false
+          outputs: |
+            type=local,dest=/tmp/out
+          target: export
+          build-args: |
+            VERSION=v${{ steps.docker_meta.outputs.version }}
+
+      - name: Move files
+        run: |
+          mkdir -p /tmp/artifacts
+          mv /tmp/out/linux_amd64/withny-dl-darwin-amd64 /tmp/artifacts/withny-dl-darwin-amd64
+          mv /tmp/out/linux_arm64/withny-dl-darwin-arm64 /tmp/artifacts/withny-dl-darwin-arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: osx-binaries
+          path: /tmp/artifacts
+          if-no-files-found: error
+          retention-days: 1
+
+  test-darwin:
+    name: Test running darwin to see any linking errors
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-12, macos-13, macos-14]
+
+    runs-on: ${{ matrix.os }}
+
+    needs: [build-darwin]
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: osx-binaries
+
+      - name: Execute binaries
+        run: |
+          chmod +x ./withny-dl-darwin-amd64
+          ./withny-dl-darwin-amd64 --help
+
+  test-windows:
+    name: Test running windows to see any linking errors
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-2019, windows-2022]
+
+    runs-on: ${{ matrix.os }}
+
+    needs: [build-windows]
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+
+      - name: Execute binaries
+        run: |
+          .\withny-dl-windows-amd64.exe --help
+
+  test-memleaks:
+    name: Run memleak tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run memleak tests
+        run: |
+          docker run --rm \
+            -v $(pwd):/in \
+            -w /in \
+            ghcr.io/darkness4/withny-dl:valgrind \
+            make memleaks
+
+  release:
+    name: Release withny-dl
+    needs: [build-export-static, test-darwin, test-windows, test-memleaks, e2e]
+
+    runs-on: ubuntu-latest
+
+    if: startsWith(github.ref, 'refs/tags')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch tag annotations
+        run: |
+          # https://github.com/actions/checkout/issues/1467
+          git fetch --force --tags --depth 1
+
+      - name: Download linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: target
+
+      - name: Download windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: target
+
+      - name: Download osx artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: osx-binaries
+          path: target
+
+      - name: Run checksum and generate release notes
+        run: make package
+
+      - name: Branch name
+        id: branch_name
+        run: |
+          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${GITHUB_REF#refs/tags/})" >> $GITHUB_OUTPUT
+
+      - uses: sersoft-gmbh/setup-gh-cli-action@v2
+        if: startsWith(github.ref, 'refs/tags/cli')
+        with:
+          version: stable
+
+      - name: Create release
+        id: create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
+          TAG_MESSAGE: ${{ steps.branch_name.outputs.TAG_MESSAGE }}
+          IS_PRERELEASE: ${{ contains(steps.branch_name.outputs.TAG_NAME, '-') }}
+        run: |
+          RELEASE_URL=$(gh release create "$TAG_NAME" --repo Darkness4/withny-dl -t "$TAG_MESSAGE" -F target/release.md --generate-notes --draft --prerelease="$IS_PRERELEASE" target/withny-* target/checksums.txt)
+          echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_OUTPUT
+
+      - name: Notify release
+        env:
+          RELEASE_URL: ${{ steps.create_release.outputs.RELEASE_URL }}
+          GOTIFY_URL: ${{ secrets.GOTIFY_URL }}
+          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
+        run: |
+          curl -X POST "$GOTIFY_URL" -F "title=New Release: $TAG_NAME" -F "message=Release $RELEASE_URL"
