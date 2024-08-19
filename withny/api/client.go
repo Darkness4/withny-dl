@@ -176,6 +176,7 @@ func (c *Client) loginWithRefreshToken(
 	ctx context.Context,
 	refreshToken string,
 ) (Credentials, error) {
+	log.Info().Msg("refreshing token")
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(map[string]string{
 		"refreshToken": refreshToken,
@@ -224,6 +225,7 @@ func (c *Client) loginWithCredentials(
 	ctx context.Context,
 	email, password string,
 ) (Credentials, error) {
+	log.Info().Str("email", email).Msg("logging in")
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(map[string]string{
 		"email":    email, // email can also be the username

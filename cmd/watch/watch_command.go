@@ -180,6 +180,10 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 			otelhttp.WithTracerProvider(noop.NewTracerProvider()),
 		),
 	}
+
+	if config.CredentialsFile == "" {
+		log.Fatal().Msg("no credentials file configured")
+	}
 	client := api.NewClient(hclient, secret.NewReader(config.CredentialsFile))
 
 	go func() {
