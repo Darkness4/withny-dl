@@ -357,7 +357,7 @@ jobs:
           docker run --rm \
             -v $(pwd):/in \
             -w /in \
-            ghcr.io/darkness4/withny-dl:valgrind \
+            ghcr.io/darkness4/fc2-live-dl-go:valgrind \
             make memleaks
 
   release:
