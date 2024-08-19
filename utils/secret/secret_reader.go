@@ -52,7 +52,7 @@ func (s *Reader) Read() (username string, password string, err error) {
 	return string(usernameB), string(passwordB), nil
 }
 
-// UserPasswordReader is a user password reader.
+// UserPasswordFromEnv is a user password reader from the environment.
 type UserPasswordFromEnv struct{}
 
 // Read returns the email and password from the environment.
