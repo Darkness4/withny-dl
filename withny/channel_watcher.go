@@ -217,7 +217,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.Metadata) error {
 		log.Err(err).Msg("notify failed")
 	}
 
-	dlErr := downloadStream(ctx, w.Client, LiveStream{
+	dlErr := DownloadLiveStream(ctx, w.Client, LiveStream{
 		Metadata:       meta,
 		Params:         w.params,
 		OutputFileName: fnameStream,

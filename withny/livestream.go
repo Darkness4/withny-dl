@@ -23,7 +23,8 @@ type LiveStream struct {
 	OutputFileName string
 }
 
-func downloadStream(ctx context.Context, client *api.Client, ls LiveStream) error {
+// DownloadLiveStream downloads a withny live stream.
+func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) error {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "withny.downloadStream", trace.WithAttributes(
 		attribute.String("channel_id", ls.Metadata.User.Username),
 		attribute.String("fname", ls.OutputFileName),
