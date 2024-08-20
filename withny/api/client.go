@@ -260,12 +260,12 @@ func (c *Client) LoginWithRefreshToken(
 // LoginWithUserPassword will login with the given email and password.
 func (c *Client) LoginWithUserPassword(
 	ctx context.Context,
-	email, password string,
+	username, password string,
 ) (Credentials, error) {
-	log.Info().Str("email", email).Msg("logging in")
+	log.Info().Str("username", username).Msg("logging in")
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(map[string]string{
-		"email":    email, // email can also be the username
+		"email":    username, // email can also be the username
 		"password": password,
 	}); err != nil {
 		panic(err)
