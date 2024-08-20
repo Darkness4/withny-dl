@@ -18,7 +18,7 @@ func TestPrepareFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	format := fmt.Sprintf("%s/{{ .Title }}.{{ .Ext }}", dir)
-	fName, err := withny.PrepareFile(format, api.Metadata{
+	fName, err := withny.PrepareFile(format, api.MetaData{
 		Stream: api.GetStreamsResponseElement{
 			Title: "test",
 		},
@@ -28,7 +28,7 @@ func TestPrepareFile(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(fName, []byte("test"), 0o600))
 
-	fName, err = withny.PrepareFile(format, api.Metadata{
+	fName, err = withny.PrepareFile(format, api.MetaData{
 		Stream: api.GetStreamsResponseElement{
 			Title: "test",
 		},

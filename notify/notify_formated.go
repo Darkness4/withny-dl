@@ -78,24 +78,24 @@ var DefaultNotificationFormats = NotificationFormats{
 	},
 	PreparingFiles: NotificationFormat{
 		Enabled: ptr.Ref(false),
-		Title:   "preparing files for {{ .MetaData.ProfileData.Name }}",
+		Title:   "preparing files for {{ .ChannelID }}",
 	},
 	Downloading: NotificationFormat{
 		Enabled:  ptr.Ref(true),
-		Title:    "{{ .MetaData.ProfileData.Name }} is streaming",
-		Message:  "{{ .MetaData.ChannelData.Title }}",
+		Title:    "{{ .ChannelID }} is streaming",
+		Message:  "{{ .MetaData.Stream.Title }}",
 		Priority: 7,
 	},
 	PostProcessing: NotificationFormat{
 		Enabled:  ptr.Ref(false),
-		Title:    "post-processing {{ .MetaData.ProfileData.Name }}",
-		Message:  "{{ .MetaData.ChannelData.Title }}",
+		Title:    "post-processing {{ .ChannelID }}",
+		Message:  "{{ .MetaData.Stream.Title }}",
 		Priority: 7,
 	},
 	Finished: NotificationFormat{
 		Enabled:  ptr.Ref(true),
-		Title:    "{{ .MetaData.ProfileData.Name }} stream ended",
-		Message:  "{{ .MetaData.ChannelData.Title }}",
+		Title:    "{{ .ChannelID }} stream ended",
+		Message:  "{{ .MetaData.Stream.Title }}",
 		Priority: 7,
 	},
 	Error: NotificationFormat{

@@ -213,7 +213,6 @@ To configure the watcher, you must provide a configuration file. The configurati
 
 ```yaml
 ---
----
 ## [REQUIRED] Path to the file containing the credentials. (default: '')
 ##
 ## Example of content:
@@ -236,20 +235,20 @@ defaultParams:
   ## None means the highest quality available. Constraints are inclusive.
   ## Recommendation is to set nothing.
   quality:
-    {}
-    ## Height is usually: 1080, 720, 480, 360, 160
-    # minHeight: 0
-    # maxHeight: 0
-    ## Width is usually: 1920, 1280, 854, 640, 284
-    # minWidth: 0
-    # maxWidth: 0
-    ## Framerate is usually: 60, 30
-    # minFramerate: 0.0
-    # maxFramerate: 0.0
+    ## Height is usually: 1080, 720, 480, 360, 160.
+    minHeight: 0
+    maxHeight: 0
+    ## Width is usually: 1920, 1280, 854, 640, 284.
+    minWidth: 0
+    maxWidth: 0
+    ## Framerate is usually: 60, 30.
+    minFramerate: 0.0
+    maxFramerate: 0.0
     ## Bandwidth is in bits/s.
-    # minBandwidth: 0
-    # maxBandwidth: 0
-    # audioOnly: false
+    minBandwidth: 0
+    maxBandwidth: 0
+    ## Select audio quality.
+    audioOnly: false
   ## Output format. Uses Golang templating format.
   ##
   ## Available fields: ChannelID, ChannelName, Date, Time, Title, Ext, Labels.Key.
@@ -260,7 +259,7 @@ defaultParams:
   ##   Time: local time HHMMSS
   ##   Ext: file extension
   ##   Title: sanitized title of the live broadcast
-  ##   Metadata (object): the full metadata (see withny/api/objects.go for the available field)
+  ##   MetaData (object): the full metadata (see withny/api/objects.go for the available field)
   ##   Labels.Key: custom labels
   ## (default: "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}")
   outFormat: '{{ .ChannelID }} {{ .ChannelName }}/{{ .Date }} {{ .Title }}.{{ .Ext }}'
@@ -384,7 +383,6 @@ notifier:
     ##   - Labels
     idle:
       enabled: false
-      title: 'watching {{.Labels.EnglishName }}'
       # title: "watching {{ .ChannelID }}"
       # message: <empty>
       # priority: 0
@@ -396,8 +394,7 @@ notifier:
     ##   - Labels
     preparingFiles:
       enabled: false
-      title: 'preparing files for {{ .Labels.EnglishName }}'
-      # title: 'preparing files for {{ .MetaData.ProfileData.Name }}'
+      # title: 'preparing files for {{ .ChannelID }}'
       # message: ''
       # priority: 0
 
@@ -408,9 +405,8 @@ notifier:
     ##   - Labels
     downloading:
       enabled: true
-      title: '{{ .Labels.EnglishName }} is streaming'
-      # title: "{{ .MetaData.ProfileData.Name }} is streaming"
-      # message: "{{ .MetaData.ChannelData.Title }}"
+      # title: "{{ .ChannelID }} is streaming"
+      # message: "{{ .MetaData.Stream.Title }}"
       # priority: 7
 
     ## Post-processing happens when the stream has finished streaming.
@@ -420,9 +416,8 @@ notifier:
     ##   - Labels
     postProcessing:
       enabled: false
-      title: 'post-processing {{ .Labels.EnglishName }}'
-      # title: "post-processing {{ .MetaData.ProfileData.Name }}"
-      # message: "{{ .MetaData.ChannelData.Title }}"
+      # title: "post-processing {{ .ChannelID }}"
+      # message: "{{ .MetaData.Stream.Title }}"
       # priority: 7
 
     ## Finished happens when the stream has finished streaming and post-processing is done.
@@ -432,9 +427,8 @@ notifier:
     ##   - Labels
     finished:
       enabled: true
-      title: '{{ .Labels.EnglishName }} stream ended'
-      # title: "{{ .MetaData.ProfileData.Name }} stream ended"
-      # message: "{{ .MetaData.ChannelData.Title }}"
+      # title: "{{ .ChannelID }} stream ended"
+      # message: "{{ .MetaData.Stream.Title }}"
       # priority: 7
 
     ## Error happens when something bad happens with the downloading of the stream.
@@ -445,7 +439,6 @@ notifier:
     ##   - Labels
     error:
       enabled: true
-      title: 'stream download of {{ .Labels.EnglishName }} failed'
       # title: 'stream download of {{ .ChannelID }} failed'
       # message: '{{ .Error }}'
       # priority: 10
@@ -456,7 +449,6 @@ notifier:
     ##   - Labels
     canceled:
       enabled: true
-      title: 'stream download of {{ .Labels.EnglishName }} canceled'
       # title: "stream download of {{ .ChannelID }} canceled"
       # message: <empty>
       # priority: 7

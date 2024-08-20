@@ -361,12 +361,12 @@ func handleChannel(
 	client *api.Client,
 	channelID string,
 	params *withny.Params,
-) (api.Metadata, error) {
+) (api.MetaData, error) {
 	downloader := withny.NewChannelWatcher(client, params, channelID)
 
 	meta, err := downloader.Watch(ctx)
 	if err != nil && err != io.EOF {
-		return api.Metadata{}, err
+		return api.MetaData{}, err
 	}
 	return meta, nil
 }

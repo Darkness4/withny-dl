@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// Metadata is the metadata of the stream.
-type Metadata struct {
+// MetaData is the metadata of the stream.
+type MetaData struct {
 	User   GetUserResponse
 	Stream GetStreamsResponseElement
 }

@@ -12,7 +12,7 @@ import (
 // FormatOutput formats the output file name.
 func FormatOutput(
 	outFormat string,
-	meta api.Metadata,
+	meta api.MetaData,
 	labels map[string]string,
 	ext string,
 ) (string, error) {
@@ -24,7 +24,7 @@ func FormatOutput(
 		Time        string
 		Title       string
 		Ext         string
-		MetaData    api.Metadata
+		MetaData    api.MetaData
 		Labels      map[string]string
 	}{
 		Date:   timeNow.Format("2006-01-02"),

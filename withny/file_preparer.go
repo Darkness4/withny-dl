@@ -12,7 +12,7 @@ import (
 // PrepareFile prepares a file with a unique name.
 func PrepareFile(
 	outFormat string,
-	meta api.Metadata,
+	meta api.MetaData,
 	labels map[string]string,
 	ext string,
 ) (fName string, err error) {

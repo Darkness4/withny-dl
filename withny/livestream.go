@@ -18,7 +18,7 @@ import (
 
 // LiveStream encapsulates the withny live stream.
 type LiveStream struct {
-	Metadata       api.Metadata
+	MetaData       api.MetaData
 	Params         *Params
 	OutputFileName string
 }
@@ -26,13 +26,13 @@ type LiveStream struct {
 // DownloadLiveStream downloads a withny live stream.
 func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) error {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "withny.downloadStream", trace.WithAttributes(
-		attribute.String("channel_id", ls.Metadata.User.Username),
+		attribute.String("channel_id", ls.MetaData.User.Username),
 		attribute.String("fname", ls.OutputFileName),
 	))
 	defer span.End()
 
 	// Fetch playlist
-	playbackURL, err := client.GetStreamPlaybackURL(ctx, ls.Metadata.Stream.UUID)
+	playbackURL, err := client.GetStreamPlaybackURL(ctx, ls.MetaData.Stream.UUID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -64,9 +64,9 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	metrics.TimeEndRecording(
 		ctx,
 		metrics.Downloads.InitTime,
-		ls.Metadata.User.Username,
+		ls.MetaData.User.Username,
 		metric.WithAttributes(
-			attribute.String("channel_id", ls.Metadata.User.Username),
+			attribute.String("channel_id", ls.MetaData.User.Username),
 		),
 	)
 
@@ -83,12 +83,12 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 		metrics.Downloads.CompletionTime,
 		time.Second,
 		metric.WithAttributes(
-			attribute.String("channel_id", ls.Metadata.User.Username),
+			attribute.String("channel_id", ls.MetaData.User.Username),
 		),
 	)
 	defer end()
 	metrics.Downloads.Runs.Add(ctx, 1, metric.WithAttributes(
-		attribute.String("channel_id", ls.Metadata.User.Username),
+		attribute.String("channel_id", ls.MetaData.User.Username),
 	))
 
 	// Actually download. It will block until the download is finished.

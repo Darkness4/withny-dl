@@ -60,17 +60,17 @@ func NewChannelWatcher(client *api.Client, params *Params, channelID string) *Ch
 }
 
 // Watch watches the channel for any new live stream.
-func (w *ChannelWatcher) Watch(ctx context.Context) (api.Metadata, error) {
+func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
 	w.log.Info().Any("params", w.params).Msg("watching channel")
 
 	online, streams, err := w.IsOnline(ctx)
 	if err != nil {
-		return api.Metadata{}, err
+		return api.MetaData{}, err
 	}
 
 	if !online {
 		if !w.params.WaitForLive {
-			return api.Metadata{}, ErrLiveStreamNotOnline
+			return api.MetaData{}, ErrLiveStreamNotOnline
 		}
 		streams = func() api.GetStreamsResponse {
 			ticker := time.NewTicker(w.params.WaitPollInterval)
@@ -92,10 +92,10 @@ func (w *ChannelWatcher) Watch(ctx context.Context) (api.Metadata, error) {
 
 	getUserResp, err := w.Client.GetUser(ctx, w.channelID)
 	if err != nil {
-		return api.Metadata{}, err
+		return api.MetaData{}, err
 	}
 
-	meta := api.Metadata{
+	meta := api.MetaData{
 		User:   getUserResp,
 		Stream: streams[0],
 	}
@@ -130,7 +130,7 @@ func (w *ChannelWatcher) IsOnline(
 }
 
 // Process runs the whole preparation, download and post-processing pipeline.
-func (w *ChannelWatcher) Process(ctx context.Context, meta api.Metadata) error {
+func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	ctx, span := otel.Tracer(tracerName).
 		Start(ctx, "withny.Process", trace.WithAttributes(attribute.String("channelID", w.channelID),
 			attribute.Stringer("params", w.params),
@@ -218,7 +218,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.Metadata) error {
 	}
 
 	dlErr := DownloadLiveStream(ctx, w.Client, LiveStream{
-		Metadata:       meta,
+		MetaData:       meta,
 		Params:         w.params,
 		OutputFileName: fnameStream,
 	})
