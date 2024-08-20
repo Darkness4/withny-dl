@@ -93,52 +93,43 @@ func (c *Client) NewAuthRequestWithContext(
 // Login will login to withny and store the credentials in the client.
 func (c *Client) Login(ctx context.Context) (err error) {
 	var creds Credentials
+
 	switch {
-	case c.credentials.RefreshToken != "":
+	case c.credentials.Token != "":
 		creds, err = c.LoginWithRefreshToken(ctx, c.credentials.RefreshToken)
 		if err != nil {
-			if c.credentialsReader == nil {
-				log.Err(err).Msg("failed to refresh token")
-				return fmt.Errorf("no credentials provided")
-			}
-
 			log.Err(err).Msg("failed to refresh token, will use saved credentials")
-			saved, rerr := c.credentialsReader.Read()
-			if rerr != nil {
-				return rerr
-			}
-			if saved.Username != "" {
-				creds, err = c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
-			} else if saved.Token != "" {
-				// Hijack the client token to override authorization header
-				c.credentials.Token = saved.Token
-				c.credentials.TokenType = "Bearer"
-				c.credentials.RefreshToken = saved.RefreshToken
-				creds, err = c.LoginWithRefreshToken(ctx, saved.RefreshToken)
-			}
-		}
-	case c.credentialsReader != nil:
-		saved, rerr := c.credentialsReader.Read()
-		if rerr != nil {
-			return rerr
-		}
-		if saved.Username != "" {
-			creds, err = c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
-		} else if saved.Token != "" {
-			// Hijack the client token to override authorization header
-			c.credentials.Token = saved.Token
-			c.credentials.TokenType = "Bearer"
-			c.credentials.RefreshToken = saved.RefreshToken
-			creds, err = c.LoginWithRefreshToken(ctx, saved.RefreshToken)
+			creds, err = c.loginWithSaved(ctx)
 		}
 	default:
-		return fmt.Errorf("no credentials provided")
+		creds, err = c.loginWithSaved(ctx)
 	}
 	if err != nil {
 		return err
 	}
+
 	c.credentials = creds
 	return nil
+}
+
+func (c *Client) loginWithSaved(ctx context.Context) (Credentials, error) {
+	if c.credentialsReader == nil {
+		return Credentials{}, fmt.Errorf("no credentials provided")
+	}
+	saved, err := c.credentialsReader.Read()
+	if err != nil {
+		return Credentials{}, err
+	}
+	if saved.Username != "" {
+		return c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
+	} else if saved.Token != "" {
+		// Hijack the client token to override authorization header
+		c.credentials.Token = saved.Token
+		c.credentials.TokenType = "Bearer"
+		c.credentials.RefreshToken = saved.RefreshToken
+		return c.LoginWithRefreshToken(ctx, saved.RefreshToken)
+	}
+	return Credentials{}, fmt.Errorf("no credentials provided")
 }
 
 // GetUser will fetch the user for the given channelID.

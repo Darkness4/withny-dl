@@ -59,7 +59,7 @@ func TestClient(t *testing.T) {
 		)
 		require.NoError(t, err)
 		client.SetCredentials(res)
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 		res2, err := client.LoginWithRefreshToken(
 			context.Background(),
 			res.RefreshToken,
@@ -92,7 +92,7 @@ func TestClient(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 
 		static := secret.Static{
 			SavedCredentials: api.SavedCredentials{
