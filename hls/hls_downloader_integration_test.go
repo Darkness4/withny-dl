@@ -44,13 +44,13 @@ func (suite *DownloaderIntegrationTestSuite) fetchPlaylist(
 	playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
 	suite.Require().NoError(err)
 
-	fmt.Println(playbackURL)
 	playlists, err := client.GetPlaylists(context.Background(), playbackURL)
 
 	playlist, ok := api.GetBestPlaylist(playlists)
 	if !ok {
 		panic("no playlist found")
 	}
+	log.Info().Any("playlist", playlist).Msg("playlist found")
 
 	return playlist
 }
@@ -76,7 +76,7 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 	playlist := suite.fetchPlaylist(suite.client)
 
 	// Prepare implementation
-	suite.impl = hls.NewDownloader(suite.client.Client, &log.Logger, 8, playlist.URL)
+	suite.impl = hls.NewDownloader(suite.client, &log.Logger, 8, playlist.URL)
 }
 
 func (suite *DownloaderIntegrationTestSuite) TestGetFragmentURLs() {

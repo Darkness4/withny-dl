@@ -6,15 +6,14 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/http"
 	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
+	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
@@ -29,7 +28,7 @@ var (
 
 // Downloader is used to download HLS streams.
 type Downloader struct {
-	*http.Client
+	*api.Client
 	packetLossMax int
 	log           *zerolog.Logger
 	url           string
@@ -41,7 +40,7 @@ type Downloader struct {
 
 // NewDownloader creates a new HLS downloader.
 func NewDownloader(
-	client *http.Client,
+	client *api.Client,
 	log *zerolog.Logger,
 	packetLossMax int,
 	url string,
@@ -56,16 +55,23 @@ func NewDownloader(
 }
 
 // GetFragmentURLs fetches the fragment URLs from the HLS manifest.
-func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]string, error) {
+func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, "GET", hls.url, nil)
+	req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
 	if err != nil {
-		return []string{}, err
+		return []fragment{}, err
 	}
+	req.Header.Set(
+		"Accept",
+		"application/x-mpegURL, application/vnd.apple.mpegurl, application/json, text/plain",
+	)
+	req.Header.Set("Referer", "https://www.withny.fun/")
+	req.Header.Set("Origin", "https://www.withny.fun")
+
 	resp, err := hls.Client.Do(req)
 	if err != nil {
-		return []string{}, err
+		return []fragment{}, err
 	}
 	defer resp.Body.Close()
 
@@ -82,7 +88,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]string, error) {
 				Str("method", "GET").
 				Msg("http error")
 			metrics.Downloads.Errors.Add(ctx, 1)
-			return []string{}, ErrHLSForbidden
+			return []fragment{}, ErrHLSForbidden
 		case 404:
 			hls.log.Warn().
 				Str("url", url.String()).
@@ -90,7 +96,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]string, error) {
 				Str("response.body", string(body)).
 				Str("method", "GET").
 				Msg("stream not ready")
-			return []string{}, nil
+			return []fragment{}, nil
 		default:
 			hls.log.Error().
 				Str("url", url.String()).
@@ -99,18 +105,32 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]string, error) {
 				Str("method", "GET").
 				Msg("http error")
 			metrics.Downloads.Errors.Add(ctx, 1)
-			return []string{}, errors.New("http error")
+			return []fragment{}, errors.New("http error")
 		}
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
-	urls := make([]string, 0, 10)
+	fragments := make([]fragment, 0, 10)
 	exists := make(map[string]bool) // Avoid duplicates
 
 	// URLs are supposedly sorted.
+	var currentFragment fragment
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if len(line) > 0 && line[0] != '#' && !exists[line] {
+
+		switch {
+		case strings.HasPrefix(line, "#EXT-X-PROGRAM-DATE-TIME"):
+			ts := strings.TrimPrefix(line, "#EXT-X-PROGRAM-DATE-TIME:")
+			t, err := time.Parse(time.RFC3339, ts)
+			if err != nil {
+				hls.log.Warn().
+					Err(err).
+					Str("ts", ts).
+					Msg("failed to parse time, using now")
+				t = time.Now()
+			}
+			currentFragment.Time = t
+		case strings.HasPrefix(line, "https://") && !exists[line]:
 			_, err := url.Parse(line)
 			if err != nil {
 				hls.log.Warn().
@@ -118,7 +138,11 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]string, error) {
 					Msg("m3u8 returned a bad url, skipping that line")
 				continue
 			}
-			urls = append(urls, line)
+			currentFragment.URL = line
+			fragments = append(fragments, fragment{
+				URL:  currentFragment.URL,
+				Time: currentFragment.Time,
+			})
 			exists[line] = true
 		}
 	}
@@ -127,13 +151,13 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]string, error) {
 		hls.ready = true
 		hls.log.Info().Msg("downloading")
 	}
-	return urls, nil
+	return fragments, nil
 }
 
 // fillQueue continuously fetches fragments url until stream end
 func (hls *Downloader) fillQueue(
 	ctx context.Context,
-	urlChan chan<- string,
+	fragChan chan<- fragment,
 ) (err error) {
 	hls.log.Debug().Msg("started to fill queue")
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "hls.fillQueue")
@@ -162,7 +186,7 @@ func (hls *Downloader) fillQueue(
 			// Do nothing if the ticker hasn't ticked yet
 		}
 
-		urls, err := hls.GetFragmentURLs(ctx)
+		fragments, err := hls.GetFragmentURLs(ctx)
 		if err != nil {
 			span.RecordError(err)
 			// Failed to fetch playlist in time
@@ -190,25 +214,15 @@ func (hls *Downloader) fillQueue(
 		// Find the last fragment url to resume download
 		if lastFragmentName != "" &&
 			((useTimeBasedSorting && !lastFragmentTime.Equal(timeZero)) || !useTimeBasedSorting) {
-			for i, u := range urls {
-				parsed, err := url.Parse(u)
-				if err != nil {
-					hls.log.Err(err).
-						Str("url", u).
-						Msg("failed to parse fragment URL when checking for last fragment, skipping")
-					continue
-				}
-				fragmentName := filepath.Base(parsed.Path)
+			for i, u := range fragments {
+				fragmentName := filepath.Base(u.URL)
 				var fragmentTime time.Time
 				if useTimeBasedSorting {
-					tsI, err := strconv.ParseInt(parsed.Query().Get("time"), 10, 64)
-					if err != nil {
-						hls.log.Err(err).
-							Str("url", u).
-							Msg("failed to parse fragment URL, time is invalid, fragment will now be sorted by name")
+					if u.Time.Equal(timeZero) {
+						hls.log.Warn().Msg("fragment time is zero, use name based sorting")
 						useTimeBasedSorting = false
 					} else {
-						fragmentTime = time.Unix(tsI, 0)
+						fragmentTime = u.Time
 					}
 				}
 
@@ -219,33 +233,18 @@ func (hls *Downloader) fillQueue(
 			}
 		}
 
-		nNew := len(urls) - newIdx
+		nNew := len(fragments) - newIdx
 		if nNew > 0 {
 			lastFragmentReceivedTimestamp = time.Now()
-			hls.log.Trace().Strs("urls", urls[newIdx:]).Msg("found new fragments")
+			hls.log.Trace().Any("fragments", fragments[newIdx:]).Msg("found new fragments")
 		}
 
-		for _, u := range urls[newIdx:] {
-			parsed, err := url.Parse(u)
-			if err != nil {
-				hls.log.Err(err).
-					Str("url", u).
-					Msg("failed to parse fragment URL, skipping")
-				continue
-			}
-			lastFragmentName = filepath.Base(parsed.Path)
+		for _, f := range fragments[newIdx:] {
+			lastFragmentName = filepath.Base(f.URL)
 			if useTimeBasedSorting {
-				tsI, err := strconv.ParseInt(parsed.Query().Get("time"), 10, 64)
-				if err != nil {
-					hls.log.Err(err).
-						Str("url", u).
-						Msg("failed to parse fragment URL, time is invalid, fragment will now be sorted by name")
-					useTimeBasedSorting = false
-				} else {
-					lastFragmentTime = time.Unix(tsI, 0)
-				}
+				lastFragmentTime = f.Time
 			}
-			urlChan <- u
+			fragChan <- f
 		}
 
 		// fillQueue will also exit here if the stream has ended (and do not send any fragment)
@@ -267,10 +266,12 @@ func (hls *Downloader) download(
 ) error {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := hls.NewAuthRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Referer", "https://www.withny.fun/")
+	req.Header.Set("Origin", "https://www.withny.fun")
 	resp, err := hls.Client.Do(req)
 	if err != nil {
 		return err
@@ -299,6 +300,11 @@ func (hls *Downloader) download(
 	return err
 }
 
+type fragment struct {
+	URL  string
+	Time time.Time
+}
+
 // Read reads the HLS stream and sends the data to the writer.
 //
 // Read runs two threads:
@@ -320,11 +326,11 @@ func (hls *Downloader) Read(
 	errChan := make(chan error) // Blocking channel is used to wait for fillQueue to finish.
 	defer close(errChan)
 
-	urlsChan := make(chan string, 10)
-	defer close(urlsChan)
+	fragChan := make(chan fragment, 10)
+	defer close(fragChan)
 
 	go func() {
-		err := hls.fillQueue(ctx, urlsChan)
+		err := hls.fillQueue(ctx, fragChan)
 		errChan <- err
 	}()
 
@@ -332,8 +338,8 @@ func (hls *Downloader) Read(
 
 	for {
 		select {
-		case url := <-urlsChan:
-			err := hls.download(ctx, writer, url)
+		case frag := <-fragChan:
+			err := hls.download(ctx, writer, frag.URL)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					hls.log.Info().Msg("skip fragment download because of context canceled")
@@ -384,10 +390,17 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", hls.url, nil)
+	req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
 	if err != nil {
 		return false, err
 	}
+	req.Header.Set(
+		"Accept",
+		"application/x-mpegURL, application/vnd.apple.mpegurl, application/json, text/plain",
+	)
+	req.Header.Set("Referer", "https://www.withny.fun/")
+	req.Header.Set("Origin", "https://www.withny.fun")
+
 	resp, err := hls.Client.Do(req)
 	if err != nil {
 		return false, err
