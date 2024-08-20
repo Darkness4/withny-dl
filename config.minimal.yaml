@@ -19,5 +19,4 @@ defaultParams:
   labels: {}
 
 channels:
-  'Silvia_Sugarl':
-  'Lunahlive':
+  'admin':
