@@ -300,6 +300,7 @@ func (hls *Downloader) download(
 	return err
 }
 
+// Fragment represents a fragment of the HLS stream.
 type Fragment struct {
 	URL  string
 	Time time.Time
