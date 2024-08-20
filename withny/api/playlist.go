@@ -105,15 +105,16 @@ func splitByCommaAvoidQuote(s string) []string {
 
 // PlaylistConstraint is used to filter playlists based on their attributes.
 type PlaylistConstraint struct {
-	MinBandwidth int64   `yaml:"minBandwidth"`
-	MaxBandwidth int64   `yaml:"maxBandwidth"`
-	MinHeight    int64   `yaml:"minHeight"`
-	MaxHeight    int64   `yaml:"maxHeight"`
-	MinWidth     int64   `yaml:"minWidth"`
-	MaxWidth     int64   `yaml:"maxWidth"`
-	MinFrameRate float64 `yaml:"minFrameRate"`
-	MaxFrameRate float64 `yaml:"maxFrameRate"`
-	AudioOnly    bool    `yaml:"audioOnly"`
+	MinBandwidth int64    `yaml:"minBandwidth"`
+	MaxBandwidth int64    `yaml:"maxBandwidth"`
+	MinHeight    int64    `yaml:"minHeight"`
+	MaxHeight    int64    `yaml:"maxHeight"`
+	MinWidth     int64    `yaml:"minWidth"`
+	MaxWidth     int64    `yaml:"maxWidth"`
+	MinFrameRate float64  `yaml:"minFrameRate"`
+	MaxFrameRate float64  `yaml:"maxFrameRate"`
+	AudioOnly    bool     `yaml:"audioOnly"`
+	Ignored      []string `yaml:"ignored"`
 }
 
 // GetBestPlaylist returns the best playlist based on the constraints.
@@ -136,6 +137,12 @@ streamLoop:
 				constraint.MaxFrameRate > 0 && stream.FrameRate > constraint.MaxFrameRate,
 				constraint.AudioOnly && stream.Video != "audio_only":
 				continue streamLoop
+			}
+
+			for _, ignored := range constraint.Ignored {
+				if strings.Contains(stream.URL, ignored) {
+					continue streamLoop
+				}
 			}
 		}
 

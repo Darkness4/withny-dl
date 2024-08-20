@@ -7,6 +7,7 @@ import (
 
 	"github.com/Darkness4/withny-dl/hls"
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
+	"github.com/Darkness4/withny-dl/utils/try"
 	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -46,21 +47,43 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 		return err
 	}
 
-	playlist, ok := api.GetBestPlaylist(playlists, ls.Params.QualityConstraint)
-	if !ok {
-		log.Warn().
-			Any("playlists", playlists).
-			Any("fallback", playlists[0]).
-			Any("constraint", ls.Params.QualityConstraint).
-			Msg("no playlist found with current constraint")
-		playlist = playlists[0]
+	var downloader *hls.Downloader
+	constraint := ls.Params.QualityConstraint
+	for {
+		playlist, ok := api.GetBestPlaylist(playlists, constraint)
+		if !ok {
+			log.Warn().
+				Any("playlists", playlists).
+				Any("fallback", playlists[0]).
+				Any("constraint", constraint).
+				Msg("no playlist found with current constraint")
+			playlist = playlists[0]
+		}
+
+		downloader := hls.NewDownloader(
+			client,
+			&log.Logger,
+			ls.Params.PacketLossMax,
+			playlist.URL,
+		)
+
+		if ok, err := try.DoWithResult(5, 5*time.Second, func() (bool, error) {
+			return downloader.Probe(ctx)
+		}); !ok || err != nil {
+			log.Warn().Err(err).Msg("failed to fetch playlist, switching to next playlist")
+			constraint.Ignored = append(constraint.Ignored, playlist.URL)
+		}
+
+		if ok {
+			log.Info().Any("playlist", playlist).Msg("received new HLS info")
+			span.AddEvent("playlist received", trace.WithAttributes(
+				attribute.String("url", playlist.URL),
+				attribute.String("format", playlist.Video),
+			))
+			break
+		}
 	}
 
-	log.Info().Any("playlist", playlist).Msg("received new HLS info")
-	span.AddEvent("playlist received", trace.WithAttributes(
-		attribute.String("url", playlist.URL),
-		attribute.String("format", playlist.Video),
-	))
 	metrics.TimeEndRecording(
 		ctx,
 		metrics.Downloads.InitTime,
@@ -68,13 +91,6 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 		metric.WithAttributes(
 			attribute.String("channel_id", ls.MetaData.User.Username),
 		),
-	)
-
-	downloader := hls.NewDownloader(
-		client,
-		&log.Logger,
-		ls.Params.PacketLossMax,
-		playlist.URL,
 	)
 
 	span.AddEvent("downloading")
