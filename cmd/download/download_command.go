@@ -26,7 +26,7 @@ var (
 	loop           bool
 
 	credentialFile    string
-	credentialsStatic secret.UserPasswordStatic
+	credentialsStatic secret.Static
 )
 
 // Command is the command for downloading a live withny stream.
@@ -181,27 +181,34 @@ Available format options:
 		},
 		&cli.PathFlag{
 			Name:        "credentials-file",
-			Usage:       "Path to a credentials file. Format: 'usernameb64:passwordb64' with usernameb64 and passwordb64 encoded in base64 (like basic authentication).",
+			Usage:       "Path to a credentials file. Format is YAML and must contain 'username' and 'password' or 'access-token' and 'refresh-token'.",
 			Category:    "Streaming:",
 			Destination: &credentialFile,
 		},
 		&cli.StringFlag{
 			Name:        "credentials.username",
-			Usage:       "Username for withny login",
+			Usage:       "Username/email for withny login",
 			Category:    "Streaming:",
-			Destination: &credentialsStatic.Email,
-		},
-		&cli.StringFlag{
-			Name:        "credentials.email",
-			Usage:       "Email for withny login",
-			Category:    "Streaming:",
-			Destination: &credentialsStatic.Email,
+			Aliases:     []string{"credentials.email"},
+			Destination: &credentialsStatic.Username,
 		},
 		&cli.StringFlag{
 			Name:        "credentials.password",
 			Usage:       "Password for withny login",
 			Category:    "Streaming:",
 			Destination: &credentialsStatic.Password,
+		},
+		&cli.StringFlag{
+			Name:        "credentials.access-token",
+			Usage:       "Access token for withny login. You should also provide a refresh token.",
+			Category:    "Streaming:",
+			Destination: &credentialsStatic.Token,
+		},
+		&cli.StringFlag{
+			Name:        "credentials.refresh-token",
+			Usage:       "Refresh token for withny login.",
+			Category:    "Streaming:",
+			Destination: &credentialsStatic.RefreshToken,
 		},
 		&cli.BoolFlag{
 			Name:       "no-wait",
@@ -259,8 +266,8 @@ Available format options:
 		}
 		hclient := &http.Client{Jar: jar, Timeout: time.Minute}
 
-		var reader api.UserPasswordReader
-		if credentialsStatic.Email != "" && credentialsStatic.Password != "" {
+		var reader api.CredentialsReader
+		if credentialsStatic.Username != "" || credentialsStatic.Token != "" {
 			reader = &credentialsStatic
 		}
 		if credentialFile != "" {

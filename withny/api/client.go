@@ -38,24 +38,56 @@ type Credentials struct {
 	LoginResponse
 }
 
-// UserPasswordReader is an interface for reading user and password.
-type UserPasswordReader interface {
-	Read() (email, password string, err error)
+// SavedCredentials is the saved credentials given by the user for the withny API.
+type SavedCredentials struct {
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+// CredentialsReader is an interface for reading saved credentials.
+type CredentialsReader interface {
+	Read() (SavedCredentials, error)
 }
 
 // Client is a withny API client.
 type Client struct {
 	*http.Client
-	userPasswordReader UserPasswordReader
-	credentials        Credentials
+	credentialsReader CredentialsReader
+	credentials       Credentials
+}
+
+// SetCredentials sets the credentials for the client.
+func (c *Client) SetCredentials(creds Credentials) {
+	c.credentials = creds
 }
 
 // NewClient creates a new withny API client.
-func NewClient(client *http.Client, reader UserPasswordReader) *Client {
-	return &Client{
-		Client:             client,
-		userPasswordReader: reader,
+func NewClient(client *http.Client, reader CredentialsReader) *Client {
+	if reader == nil {
+		log.Warn().Msg("no user and password provided")
 	}
+	return &Client{
+		Client:            client,
+		credentialsReader: reader,
+	}
+}
+
+// NewAuthRequestWithContext creates a new authenticated request with the given context.
+func (c *Client) NewAuthRequestWithContext(
+	ctx context.Context,
+	method, url string,
+	body io.Reader,
+) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	if c.credentials.TokenType != "" {
+		req.Header.Set("Authorization", c.credentials.TokenType+" "+c.credentials.Token)
+	}
+	return req, nil
 }
 
 // Login will login to withny and store the credentials in the client.
@@ -63,21 +95,36 @@ func (c *Client) Login(ctx context.Context) (err error) {
 	var creds Credentials
 	switch {
 	case c.credentials.RefreshToken != "":
-		creds, err = c.loginWithRefreshToken(ctx, c.credentials.RefreshToken)
+		creds, err = c.LoginWithRefreshToken(ctx, c.credentials.RefreshToken)
 		if err != nil {
-			log.Err(err).Msg("failed to refresh token, will use user and password")
-			email, password, rerr := c.userPasswordReader.Read()
+			if c.credentialsReader == nil {
+				log.Err(err).Msg("failed to refresh token")
+				return fmt.Errorf("no credentials provided")
+			}
+
+			log.Err(err).Msg("failed to refresh token, will use saved credentials")
+			saved, rerr := c.credentialsReader.Read()
 			if rerr != nil {
 				return rerr
 			}
-			creds, err = c.loginWithCredentials(ctx, email, password)
+			if saved.Username != "" {
+				creds, err = c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
+			} else if saved.Token != "" {
+				creds.Token = saved.Token
+				creds, err = c.LoginWithRefreshToken(ctx, saved.RefreshToken)
+			}
 		}
-	case c.userPasswordReader != nil:
-		email, password, rerr := c.userPasswordReader.Read()
+	case c.credentialsReader != nil:
+		saved, rerr := c.credentialsReader.Read()
 		if rerr != nil {
 			return rerr
 		}
-		creds, err = c.loginWithCredentials(ctx, email, password)
+		if saved.Username != "" {
+			creds, err = c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
+		} else if saved.Token != "" {
+			creds.Token = saved.Token
+			creds, err = c.LoginWithRefreshToken(ctx, saved.RefreshToken)
+		}
 	default:
 		return fmt.Errorf("no credentials provided")
 	}
@@ -97,7 +144,7 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 	q := u.Query()
 	q.Set("username", channelID)
 	u.RawQuery = q.Encode()
-	req, err := http.NewRequestWithContext(
+	req, err := c.NewAuthRequestWithContext(
 		ctx,
 		http.MethodGet,
 		u.String(),
@@ -105,9 +152,6 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 	)
 	if err != nil {
 		return GetUserResponse{}, err
-	}
-	if c.credentials.TokenType != "" {
-		req.Header.Set("Authorization", c.credentials.TokenType+" "+c.credentials.Token)
 	}
 
 	res, err := c.Do(req)
@@ -139,7 +183,7 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 	q := u.Query()
 	q.Set("username", channelID)
 	u.RawQuery = q.Encode()
-	req, err := http.NewRequestWithContext(
+	req, err := c.NewAuthRequestWithContext(
 		ctx,
 		http.MethodGet,
 		u.String(),
@@ -147,9 +191,6 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 	)
 	if err != nil {
 		return GetStreamsResponse{}, err
-	}
-	if c.credentials.TokenType != "" {
-		req.Header.Set("Authorization", c.credentials.TokenType+" "+c.credentials.Token)
 	}
 
 	res, err := c.Do(req)
@@ -172,7 +213,8 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 	return parsed, err
 }
 
-func (c *Client) loginWithRefreshToken(
+// LoginWithRefreshToken will login with the given refreshToken.
+func (c *Client) LoginWithRefreshToken(
 	ctx context.Context,
 	refreshToken string,
 ) (Credentials, error) {
@@ -184,7 +226,7 @@ func (c *Client) loginWithRefreshToken(
 		panic(err)
 	}
 
-	req, err := http.NewRequestWithContext(
+	req, err := c.NewAuthRequestWithContext(
 		ctx,
 		http.MethodPost,
 		refreshURL,
@@ -194,9 +236,6 @@ func (c *Client) loginWithRefreshToken(
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if c.credentials.TokenType != "" {
-		req.Header.Set("Authorization", c.credentials.TokenType+" "+c.credentials.Token)
-	}
 
 	res, err := c.Do(req)
 	if err != nil {
@@ -221,7 +260,8 @@ func (c *Client) loginWithRefreshToken(
 	return lr, err
 }
 
-func (c *Client) loginWithCredentials(
+// LoginWithUserPassword will login with the given email and password.
+func (c *Client) LoginWithUserPassword(
 	ctx context.Context,
 	email, password string,
 ) (Credentials, error) {
@@ -274,7 +314,7 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	if err != nil {
 		panic(err)
 	}
-	req, err := http.NewRequestWithContext(
+	req, err := c.NewAuthRequestWithContext(
 		ctx,
 		http.MethodGet,
 		u.String(),
@@ -282,9 +322,6 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	)
 	if err != nil {
 		return "", err
-	}
-	if c.credentials.TokenType != "" {
-		req.Header.Set("Authorization", c.credentials.TokenType+" "+c.credentials.Token)
 	}
 
 	res, err := c.Do(req)
@@ -309,6 +346,7 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 
 // GetPlaylists will fetch the playlists from the given playbackURL.
 func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playlist, error) {
+	// No need for auth request. Token is included in the playback URL.
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,

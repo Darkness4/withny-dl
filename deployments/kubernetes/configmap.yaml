@@ -5,7 +5,7 @@ metadata:
 data:
   config.yaml: |
 
-    credentialsFile: '/secrets/credentials.txt'
+    credentialsFile: '/secrets/credentials.yaml'
 
     notifier:
       gotify:

@@ -55,12 +55,12 @@ func NewDownloader(
 }
 
 // GetFragmentURLs fetches the fragment URLs from the HLS manifest.
-func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) {
+func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
 	if err != nil {
-		return []fragment{}, err
+		return []Fragment{}, err
 	}
 	req.Header.Set(
 		"Accept",
@@ -71,7 +71,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) 
 
 	resp, err := hls.Client.Do(req)
 	if err != nil {
-		return []fragment{}, err
+		return []Fragment{}, err
 	}
 	defer resp.Body.Close()
 
@@ -88,7 +88,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) 
 				Str("method", "GET").
 				Msg("http error")
 			metrics.Downloads.Errors.Add(ctx, 1)
-			return []fragment{}, ErrHLSForbidden
+			return []Fragment{}, ErrHLSForbidden
 		case 404:
 			hls.log.Warn().
 				Str("url", url.String()).
@@ -96,7 +96,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) 
 				Str("response.body", string(body)).
 				Str("method", "GET").
 				Msg("stream not ready")
-			return []fragment{}, nil
+			return []Fragment{}, nil
 		default:
 			hls.log.Error().
 				Str("url", url.String()).
@@ -105,16 +105,16 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) 
 				Str("method", "GET").
 				Msg("http error")
 			metrics.Downloads.Errors.Add(ctx, 1)
-			return []fragment{}, errors.New("http error")
+			return []Fragment{}, errors.New("http error")
 		}
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
-	fragments := make([]fragment, 0, 10)
+	fragments := make([]Fragment, 0, 10)
 	exists := make(map[string]bool) // Avoid duplicates
 
 	// URLs are supposedly sorted.
-	var currentFragment fragment
+	var currentFragment Fragment
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
@@ -139,7 +139,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) 
 				continue
 			}
 			currentFragment.URL = line
-			fragments = append(fragments, fragment{
+			fragments = append(fragments, Fragment{
 				URL:  currentFragment.URL,
 				Time: currentFragment.Time,
 			})
@@ -157,7 +157,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]fragment, error) 
 // fillQueue continuously fetches fragments url until stream end
 func (hls *Downloader) fillQueue(
 	ctx context.Context,
-	fragChan chan<- fragment,
+	fragChan chan<- Fragment,
 ) (err error) {
 	hls.log.Debug().Msg("started to fill queue")
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "hls.fillQueue")
@@ -300,7 +300,7 @@ func (hls *Downloader) download(
 	return err
 }
 
-type fragment struct {
+type Fragment struct {
 	URL  string
 	Time time.Time
 }
@@ -326,7 +326,7 @@ func (hls *Downloader) Read(
 	errChan := make(chan error) // Blocking channel is used to wait for fillQueue to finish.
 	defer close(errChan)
 
-	fragChan := make(chan fragment, 10)
+	fragChan := make(chan Fragment, 10)
 	defer close(fragChan)
 
 	go func() {

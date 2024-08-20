@@ -71,7 +71,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	)
 
 	downloader := hls.NewDownloader(
-		client.Client,
+		client,
 		&log.Logger,
 		ls.Params.PacketLossMax,
 		playlist.URL,

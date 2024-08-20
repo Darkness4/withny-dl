@@ -26,7 +26,7 @@ func timeMustParse(value string) time.Time {
 	return t
 }
 
-var expectedFragments = []fragment{
+var expectedFragments = []Fragment{
 	{
 		Time: timeMustParse("2024-08-19T23:23:47.099Z"),
 		URL:  "https://video-edge-d9161e.cdg02.hls.live-video.net/v1/segment/CqMGzqY93tj7dQxK2OfyYyv8G8p8JRTMEyKaPmwSpn_VM-NWly_6to7NFIcNktxPUJef-II4CkbfdE4CWTXSBqsux2AVRw2gQOS_bKzkVTJH3Y50z25iOeBwiOJTH5Quw5O_t8TrrHfOmHda_ahKnDgbMY0586bDEe5_sJX6an9iocxyyjdFDLHXIO3ZD-zHslTaYKdsPILxjZL40YR9DmRyie-Xv3UAmcmkMD-cbr0qKLUGhsDqvzzk0gc4IKygjy7IT68PQz7AO9YaS1K8KD9Zd0lSu03H1g9iF6icvd0SgYwahtBrtE9w9_HHfXJGLQIl__k8RHf4eAUnZ_1qe4iq5fs7wSLc1eFaOW88K93806cf74sHhA4OtocMy5e9DCPUJU2wfbsym3GIHG2MYZlaFuLg4IzE0L8xT3tf4AomGmOVlvTl-sjJzUJ-Yr59GDmoMMdfsAGxLB2nYbHLh6bKDeIi-twDy1OZ4VoWqKv0uXJuZvk9gk593XfJKFvl5Yzi_TAAPJd3rnDMn9E90JVs2sbvcHDDZqDSRHcQtvaFbsT-5jhPXtgVLChDDFZbVyf9IPIhGY7fY7zmYETOSruxqgVcPzp_2xvSZUORv6j32OqeTEqWoUDfIGgNyT1N5rWeO2rdIGTIrXBHnpPnlJuJynKUI23khs5wk5wuD3gnn3Vnx9jeIT7giH9zDw-QboRvq972TL3RhMLk4kUDB36GwqXz76BoibM9V4ra-dLFN0m4_LiFpBMpUHBbWDNZy_jxtkyyx3KZIYVwopbGwcZpxbwCgPka7vBflXnFEPRdJ6ERr_Uhp4ywR_zbqYj3A1_3u531wf7HnErUhLg6jWqoZTb2rElIdLQ-6QRRtX0_kVMHRC7YZtVXg1X6W8Cq3J14l1aLjMuSDtfcB3KsAnsUrIapUcJMnvTTsaq8gu-uLCwElbKOJ4pAAexfYJavbBmM02e5maoTAEKgUJi-cpecJv09xHjKRNCXzAMinXjuL1E8JMJbxNQjqSP7jBnRRMAE1STpk8WDcXCSKjEF17ssAoBYrYa44JOyGZeGPe3KuH44ziUaDGI0k2Fghbjb2b8fByABKglldS13ZXN0LTEwjQY.ts",
@@ -92,7 +92,7 @@ var expectedFragments = []fragment{
 //go:embed fixtures/playlist2.txt
 var fixture2 []byte
 
-var expectedFragments2 = []fragment{
+var expectedFragments2 = []Fragment{
 	{
 		Time: timeMustParse("2024-08-19T23:23:49.099Z"),
 		URL:  "https://video-edge-d9161e.cdg02.hls.live-video.net/v1/segment/Cq4G6a0ObZECekl0Rm8uUrnpZ_VKg7TQ3IkXZ3O0SRVAV5UviqLrQFjvLe1-PFp60a-Da7ZPkiQbkbIm6K-XauhyJ_PtjoU7iGj00y_igZ0ysYxsA-94DL8lA1MVZn9ODzJUEJYDyksChPy7CBULd5Ij17fIo-ukKrmY76jRV4AuHtCtdk3QnrxwBOEzXxcFqOgoVcuRypH6t3msZ8eWY3zYVHd7tL-AnG6F9N4eTOOkK4l0TzGlB5-6tQbrDXuEyFVm4JHRyTJdef3uqHaS0QORRB0yWw-EaRRquDggs-Pq0QEAF1bVv29R-ZtPjcRNhkni29k0QhtkdaMdYhXuxHspdTZJZIt_woKuBDA_fgwntlfQdUuR6z20WGN-hBpcBMlRYengtvSFpfO-89ANrYhYOxdu3KWYXoMF17-8EYu_-9oJDyLsCEbHqTG3j0FmUJhJIPM_wdd8ousGrnm7oZv31DOD-e2SoGEXxBek50llMdmHZK8PaWmJoHB9O0AXMU8sZCoU0WRYFOwh_GHGYzfDgLMmDeeLsL6sm3_1o7jLHnwcvg6D-rknktIYr7hBgHzdjbGm-7eqTIYmJrZP8867n2FkVHWibeDZBf9C4tr9EOW2Z6mdTbElkBoRGKEJ-z5WmcBGdKnCXw2hwH7nro84z2wmub3n0l9KiEjdEk_ubcNHvBghtTdLI7ZWYV59vSLGSLeerm-jhzY7PszwwOjyQTuHFAUNU7Cs0Gben7MrX19UdP3E3TiIXme6XnAMA6nVI846_g9R40XuvTZmbo8xm_NK8bmBqKkX8blsDHwBAheQknDZ0DyKijLpvJFRTbHuBkOeuw4A8oxLxMsy7Fjfwzjs2Eji7S4YKHM8zEJA2NBW1ck1iP-UDvTy6g2sur8sVzUtEpqKb0uE0fgaAFPCaRF7PyJASYostAaKj0Y-VhZ98H-uddYqtg4KPwULeFfuUX02HtCSLosI-lz2tQJLoqbe_OdRn1xLFxZ6AO56cLPoZ5h3GYPe3w6WsvirhYxYCZT7xxcf3fusn6tgu5K7_qGmIoAn2LQeYQGIg5_ik0Ibb53WaDLlhR1GVURDWhoMPX5JHOzdBKTC7SzZIAEqCWV1LXdlc3QtMTCNBg.ts",
@@ -163,7 +163,7 @@ var combinedExpectedFragments = append(
 //go:embed fixtures/playlist_no_ts.txt
 var fixture1NoTS []byte
 
-var expectedFragments1NoTS = []fragment{
+var expectedFragments1NoTS = []Fragment{
 	{
 		URL: "https://video-edge-d9161e.cdg02.hls.live-video.net/v1/segment/CqMGzqY93tj7dQxK2OfyYyv8G8p8JRTMEyKaPmwSpn_VM-NWly_6to7NFIcNktxPUJef-II4CkbfdE4CWTXSBqsux2AVRw2gQOS_bKzkVTJH3Y50z25iOeBwiOJTH5Quw5O_t8TrrHfOmHda_ahKnDgbMY0586bDEe5_sJX6an9iocxyyjdFDLHXIO3ZD-zHslTaYKdsPILxjZL40YR9DmRyie-Xv3UAmcmkMD-cbr0qKLUGhsDqvzzk0gc4IKygjy7IT68PQz7AO9YaS1K8KD9Zd0lSu03H1g9iF6icvd0SgYwahtBrtE9w9_HHfXJGLQIl__k8RHf4eAUnZ_1qe4iq5fs7wSLc1eFaOW88K93806cf74sHhA4OtocMy5e9DCPUJU2wfbsym3GIHG2MYZlaFuLg4IzE0L8xT3tf4AomGmOVlvTl-sjJzUJ-Yr59GDmoMMdfsAGxLB2nYbHLh6bKDeIi-twDy1OZ4VoWqKv0uXJuZvk9gk593XfJKFvl5Yzi_TAAPJd3rnDMn9E90JVs2sbvcHDDZqDSRHcQtvaFbsT-5jhPXtgVLChDDFZbVyf9IPIhGY7fY7zmYETOSruxqgVcPzp_2xvSZUORv6j32OqeTEqWoUDfIGgNyT1N5rWeO2rdIGTIrXBHnpPnlJuJynKUI23khs5wk5wuD3gnn3Vnx9jeIT7giH9zDw-QboRvq972TL3RhMLk4kUDB36GwqXz76BoibM9V4ra-dLFN0m4_LiFpBMpUHBbWDNZy_jxtkyyx3KZIYVwopbGwcZpxbwCgPka7vBflXnFEPRdJ6ERr_Uhp4ywR_zbqYj3A1_3u531wf7HnErUhLg6jWqoZTb2rElIdLQ-6QRRtX0_kVMHRC7YZtVXg1X6W8Cq3J14l1aLjMuSDtfcB3KsAnsUrIapUcJMnvTTsaq8gu-uLCwElbKOJ4pAAexfYJavbBmM02e5maoTAEKgUJi-cpecJv09xHjKRNCXzAMinXjuL1E8JMJbxNQjqSP7jBnRRMAE1STpk8WDcXCSKjEF17ssAoBYrYa44JOyGZeGPe3KuH44ziUaDGI0k2Fghbjb2b8fByABKglldS13ZXN0LTEwjQY.ts",
 	},
@@ -214,7 +214,7 @@ var expectedFragments1NoTS = []fragment{
 //go:embed fixtures/playlist2_no_ts.txt
 var fixture2NoTS []byte
 
-var expectedFragments2NoTS = []fragment{
+var expectedFragments2NoTS = []Fragment{
 	{
 		URL: "https://video-edge-d9161e.cdg02.hls.live-video.net/v1/segment/Cq4G6a0ObZECekl0Rm8uUrnpZ_VKg7TQ3IkXZ3O0SRVAV5UviqLrQFjvLe1-PFp60a-Da7ZPkiQbkbIm6K-XauhyJ_PtjoU7iGj00y_igZ0ysYxsA-94DL8lA1MVZn9ODzJUEJYDyksChPy7CBULd5Ij17fIo-ukKrmY76jRV4AuHtCtdk3QnrxwBOEzXxcFqOgoVcuRypH6t3msZ8eWY3zYVHd7tL-AnG6F9N4eTOOkK4l0TzGlB5-6tQbrDXuEyFVm4JHRyTJdef3uqHaS0QORRB0yWw-EaRRquDggs-Pq0QEAF1bVv29R-ZtPjcRNhkni29k0QhtkdaMdYhXuxHspdTZJZIt_woKuBDA_fgwntlfQdUuR6z20WGN-hBpcBMlRYengtvSFpfO-89ANrYhYOxdu3KWYXoMF17-8EYu_-9oJDyLsCEbHqTG3j0FmUJhJIPM_wdd8ousGrnm7oZv31DOD-e2SoGEXxBek50llMdmHZK8PaWmJoHB9O0AXMU8sZCoU0WRYFOwh_GHGYzfDgLMmDeeLsL6sm3_1o7jLHnwcvg6D-rknktIYr7hBgHzdjbGm-7eqTIYmJrZP8867n2FkVHWibeDZBf9C4tr9EOW2Z6mdTbElkBoRGKEJ-z5WmcBGdKnCXw2hwH7nro84z2wmub3n0l9KiEjdEk_ubcNHvBghtTdLI7ZWYV59vSLGSLeerm-jhzY7PszwwOjyQTuHFAUNU7Cs0Gben7MrX19UdP3E3TiIXme6XnAMA6nVI846_g9R40XuvTZmbo8xm_NK8bmBqKkX8blsDHwBAheQknDZ0DyKijLpvJFRTbHuBkOeuw4A8oxLxMsy7Fjfwzjs2Eji7S4YKHM8zEJA2NBW1ck1iP-UDvTy6g2sur8sVzUtEpqKb0uE0fgaAFPCaRF7PyJASYostAaKj0Y-VhZ98H-uddYqtg4KPwULeFfuUX02HtCSLosI-lz2tQJLoqbe_OdRn1xLFxZ6AO56cLPoZ5h3GYPe3w6WsvirhYxYCZT7xxcf3fusn6tgu5K7_qGmIoAn2LQeYQGIg5_ik0Ibb53WaDLlhR1GVURDWhoMPX5JHOzdBKTC7SzZIAEqCWV1LXdlc3QtMTCNBg.ts",
 	},
@@ -312,8 +312,8 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLs() {
 
 func (suite *DownloaderTestSuite) TestFillQueue() {
 	// Arrange
-	frags := make([]fragment, 0, 11)
-	fragChan := make(chan fragment)
+	frags := make([]Fragment, 0, 11)
+	fragChan := make(chan Fragment)
 	ctx, cancel := context.WithCancel(context.Background())
 	errChan := make(chan error, 1)
 
@@ -389,8 +389,8 @@ func (suite *DownloaderTestSuiteNoTS) TestGetFragmentURLs() {
 
 func (suite *DownloaderTestSuiteNoTS) TestFillQueue() {
 	// Arrange
-	frags := make([]fragment, 0, 11)
-	fragChan := make(chan fragment)
+	frags := make([]Fragment, 0, 11)
+	fragChan := make(chan Fragment)
 	ctx, cancel := context.WithCancel(context.Background())
 	errChan := make(chan error, 1)
 

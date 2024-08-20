@@ -2,16 +2,30 @@
 package secret
 
 import (
-	"encoding/base64"
 	"errors"
 	"os"
-	"strings"
+
+	"github.com/Darkness4/withny-dl/withny/api"
+	"gopkg.in/yaml.v3"
 )
 
 var (
 	// ErrInvalidSecret is returned when the secret is invalid.
 	ErrInvalidSecret = errors.New("invalid secret")
 )
+
+var _ api.CredentialsReader = (*Reader)(nil)
+
+// ReadCredentialFile reads the credentials from a file.
+func ReadCredentialFile(path string) (api.SavedCredentials, error) {
+	var cf api.SavedCredentials
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return cf, err
+	}
+	err = yaml.Unmarshal(b, &cf)
+	return cf, err
+}
 
 // Reader is a secret reader from a file.
 type Reader struct {
@@ -26,49 +40,34 @@ func NewReader(filePath string) *Reader {
 }
 
 // Read reads the username and password from the file.
-//
-// Format is 'usernameb64:passwordb64' with usernameb64 and passwordb64 encoded in base64 (like basic authentication).
-func (s *Reader) Read() (username string, password string, err error) {
-	b, err := os.ReadFile(s.FilePath)
-	if err != nil {
-		return "", "", err
-	}
-
-	usernameB64, passwordB64, found := strings.Cut(strings.TrimSpace(string(b)), ":")
-	if !found {
-		return "", "", ErrInvalidSecret
-	}
-
-	usernameB, err := base64.StdEncoding.DecodeString(usernameB64)
-	if err != nil {
-		return "", "", err
-	}
-
-	passwordB, err := base64.StdEncoding.DecodeString(passwordB64)
-	if err != nil {
-		return "", "", err
-	}
-
-	return string(usernameB), string(passwordB), nil
+func (s *Reader) Read() (api.SavedCredentials, error) {
+	creds, err := ReadCredentialFile(s.FilePath)
+	return creds, err
 }
+
+var _ api.CredentialsReader = (*UserPasswordFromEnv)(nil)
 
 // UserPasswordFromEnv is a user password reader from the environment.
 type UserPasswordFromEnv struct{}
 
 // Read returns the email and password from the environment.
-func (UserPasswordFromEnv) Read() (email, password string, err error) {
-	email = os.Getenv("WITHNY_EMAIL")
-	password = os.Getenv("WITHNY_PASSWORD")
-	return
+func (UserPasswordFromEnv) Read() (api.SavedCredentials, error) {
+	return api.SavedCredentials{
+		Username:     os.Getenv("WITHNY_USERNAME"),
+		Password:     os.Getenv("WITHNY_PASSWORD"),
+		Token:        os.Getenv("WITHNY_ACCESS_TOKEN"),
+		RefreshToken: os.Getenv("WITHNY_REFRESH_TOKEN"),
+	}, nil
 }
 
-// UserPasswordStatic is a static user password reader.
-type UserPasswordStatic struct {
-	Email    string
-	Password string
+var _ api.CredentialsReader = (*Static)(nil)
+
+// Static is a static user password reader.
+type Static struct {
+	api.SavedCredentials
 }
 
 // Read returns the email and password.
-func (u UserPasswordStatic) Read() (email, password string, err error) {
-	return u.Email, u.Password, nil
+func (u Static) Read() (api.SavedCredentials, error) {
+	return u.SavedCredentials, nil
 }

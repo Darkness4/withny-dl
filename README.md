@@ -164,19 +164,21 @@ Available format options:
 
    Streaming:
 
-   --credentials-file value       Path to a credentials file. Format: 'usernameb64:passwordb64' with usernameb64 and passwordb64 encoded in base64 (like basic authentication).
-   --credentials.email value      Email for withny login
-   --credentials.password value   Password for withny login
-   --credentials.username value   Username for withny login
-   --quality.audio-only           Only download audio streams. (default: false)
-   --quality.max-bandwidth value  Maximum inclusive bandwidth of the stream. (default: 0)
-   --quality.max-framerate value  Maximum inclusive framerate of the stream. (default: 0)
-   --quality.max-height value     Maximum inclusive height of the stream. (default: 0)
-   --quality.max-width value      Maximum inclusive width of the stream. (default: 0)
-   --quality.min-bandwidth value  Minimum inclusive bandwidth of the stream. (default: 0)
-   --quality.min-framerate value  Minimum inclusive framerate of the stream. (default: 0)
-   --quality.min-height value     Minimum inclusive height of the stream. (default: 0)
-   --quality.min-width value      Minimum inclusive width of the stream. (default: 0)
+   --credentials-file value                                 Path to a credentials file. Format is YAML and must contain 'username' and 'password' or 'access-token' and 'refresh-token'.
+   --credentials.access-token value                         Access token for withny login. You should also provide a refresh token.
+   --credentials.password value                             Password for withny login
+   --credentials.refresh-token value                        Refresh token for withny login.
+   --credentials.username value, --credentials.email value  Username/email for withny login
+   --quality.audio-only                                     Only download audio streams. (default: false)
+   --quality.max-bandwidth value                            Maximum inclusive bandwidth of the stream. (default: 0)
+   --quality.max-framerate value                            Maximum inclusive framerate of the stream. (default: 0)
+   --quality.max-height value                               Maximum inclusive height of the stream. (default: 0)
+   --quality.max-width value                                Maximum inclusive width of the stream. (default: 0)
+   --quality.min-bandwidth value                            Minimum inclusive bandwidth of the stream. (default: 0)
+   --quality.min-framerate value                            Minimum inclusive framerate of the stream. (default: 0)
+   --quality.min-height value                               Minimum inclusive height of the stream. (default: 0)
+   --quality.min-width value                                Minimum inclusive width of the stream. (default: 0)
+
 ```
 
 ### Download multiple live withny streams
@@ -211,11 +213,22 @@ To configure the watcher, you must provide a configuration file. The configurati
 
 ```yaml
 ---
-## [REQUIRED] Path to the file containing a "usernameB64:passwordB64" pair.
+---
+## [REQUIRED] Path to the file containing the credentials. (default: '')
 ##
-## usernameB64 is the base64 encoded username.
-## passwordB64 is the base64 encoded password.
-credentialsFile: ''
+## Example of content:
+##
+## ```yaml
+## # User/Password-based
+## username: admin
+## password: password
+##
+## # Token-based
+## token: "ey..."
+## refreshToken: "abc..."
+## ```
+##
+credentialsFile: 'credentials.yaml'
 
 defaultParams:
   ## Quality constraint to select the stream to download.

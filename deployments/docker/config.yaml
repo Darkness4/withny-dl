@@ -1,4 +1,4 @@
-credentialsFile: '/secrets/credentials.txt'
+credentialsFile: '/secrets/credentials.yaml'
 
 notifier:
   gotify:

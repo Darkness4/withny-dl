@@ -1,6 +1,6 @@
 //go:build integration
 
-package api
+package api_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Darkness4/withny-dl/utils/secret"
+	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 )
@@ -22,13 +23,13 @@ func TestLogin(t *testing.T) {
 	require.NoError(t, err)
 	hclient := &http.Client{Jar: jar, Timeout: time.Minute}
 	credReader := &secret.UserPasswordFromEnv{}
-	email, password, _ := credReader.Read()
-	client := NewClient(hclient, credReader)
+	saved, _ := credReader.Read()
+	client := api.NewClient(hclient, credReader)
 
 	t.Run("Login with credentials", func(t *testing.T) {
-		res, err := client.loginWithCredentials(
+		res, err := client.LoginWithUserPassword(
 			context.Background(),
-			email, password,
+			saved.Username, saved.Password,
 		)
 
 		// Assert
@@ -45,14 +46,14 @@ func TestLogin(t *testing.T) {
 
 	t.Run("Login with refresh token", func(t *testing.T) {
 		// Act
-		res, err := client.loginWithCredentials(
+		res, err := client.LoginWithUserPassword(
 			context.Background(),
-			email, password,
+			saved.Username, saved.Password,
 		)
 		require.NoError(t, err)
-		client.credentials = res
+		client.SetCredentials(res)
 		time.Sleep(2 * time.Second)
-		res2, err := client.loginWithRefreshToken(
+		res2, err := client.LoginWithRefreshToken(
 			context.Background(),
 			res.RefreshToken,
 		)
