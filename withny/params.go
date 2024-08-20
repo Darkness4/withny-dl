@@ -12,6 +12,9 @@ type Params struct {
 	QualityConstraint      api.PlaylistConstraint `yaml:"quality,omitempty"`
 	PacketLossMax          int                    `yaml:"packetLossMax,omitempty"`
 	OutFormat              string                 `yaml:"outFormat,omitempty"`
+	WriteChat              bool                   `yaml:"writeChat,omitempty"`
+	WriteMetaDataJSON      bool                   `yaml:"writeMetaDataJson,omitempty"`
+	WriteThumbnail         bool                   `yaml:"writeThumbnail,omitempty"`
 	WaitForLive            bool                   `yaml:"waitForLive,omitempty"`
 	WaitPollInterval       time.Duration          `yaml:"waitPollInterval,omitempty"`
 	Remux                  bool                   `yaml:"remux,omitempty"`
@@ -35,6 +38,9 @@ type OptionalParams struct {
 	QualityConstraint      *api.PlaylistConstraint `yaml:"quality,omitempty"`
 	PacketLossMax          *int                    `yaml:"packetLossMax,omitempty"`
 	OutFormat              *string                 `yaml:"outFormat,omitempty"`
+	WriteChat              *bool                   `yaml:"writeChat,omitempty"`
+	WriteMetaDataJSON      *bool                   `yaml:"writeMetaDataJson,omitempty"`
+	WriteThumbnail         *bool                   `yaml:"writeThumbnail,omitempty"`
 	WaitForLive            *bool                   `yaml:"waitForLive,omitempty"`
 	WaitPollInterval       *time.Duration          `yaml:"waitPollInterval,omitempty"`
 	Remux                  *bool                   `yaml:"remux,omitempty"`
@@ -53,6 +59,9 @@ var DefaultParams = Params{
 	QualityConstraint:      api.PlaylistConstraint{},
 	PacketLossMax:          20,
 	OutFormat:              "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}",
+	WriteChat:              false,
+	WriteMetaDataJSON:      false,
+	WriteThumbnail:         false,
 	WaitForLive:            true,
 	WaitPollInterval:       5 * time.Second,
 	Remux:                  true,
@@ -76,6 +85,15 @@ func (override *OptionalParams) Override(params *Params) {
 	}
 	if override.OutFormat != nil {
 		params.OutFormat = *override.OutFormat
+	}
+	if override.WriteChat != nil {
+		params.WriteChat = *override.WriteChat
+	}
+	if override.WriteMetaDataJSON != nil {
+		params.WriteMetaDataJSON = *override.WriteMetaDataJSON
+	}
+	if override.WriteThumbnail != nil {
+		params.WriteThumbnail = *override.WriteThumbnail
 	}
 	if override.WaitForLive != nil {
 		params.WaitForLive = *override.WaitForLive
@@ -124,6 +142,9 @@ func (p *Params) Clone() *Params {
 		QualityConstraint:      p.QualityConstraint,
 		PacketLossMax:          p.PacketLossMax,
 		OutFormat:              p.OutFormat,
+		WriteChat:              p.WriteChat,
+		WriteMetaDataJSON:      p.WriteMetaDataJSON,
+		WriteThumbnail:         p.WriteThumbnail,
 		WaitForLive:            p.WaitForLive,
 		WaitPollInterval:       p.WaitPollInterval,
 		Remux:                  p.Remux,

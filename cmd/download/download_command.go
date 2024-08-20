@@ -105,6 +105,27 @@ Available format options:
 `,
 			Destination: &downloadParams.OutFormat,
 		},
+		&cli.BoolFlag{
+			Name:        "write-chat",
+			Value:       false,
+			Category:    "Streaming:",
+			Usage:       "Save live chat into a json file.",
+			Destination: &downloadParams.WriteChat,
+		},
+		&cli.BoolFlag{
+			Name:        "write-metadata-json",
+			Value:       false,
+			Category:    "Streaming:",
+			Usage:       "Dump output stream MetaData into a json file.",
+			Destination: &downloadParams.WriteMetaDataJSON,
+		},
+		&cli.BoolFlag{
+			Name:        "write-thumbnail",
+			Value:       false,
+			Category:    "Streaming:",
+			Usage:       "Download thumbnail into a file.",
+			Destination: &downloadParams.WriteThumbnail,
+		},
 		&cli.IntFlag{
 			Name:        "max-packet-loss",
 			Value:       20,

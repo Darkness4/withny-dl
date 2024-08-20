@@ -51,6 +51,12 @@ defaultParams:
   outFormat: '{{ .ChannelID }} {{ .ChannelName }}/{{ .Date }} {{ .Title }}.{{ .Ext }}'
   ## Allow a maximum of packet loss before aborting stream download. (default: 20)
   packetLossMax: 20
+  ## Save live chat into a json file. (default: false)
+  writeChat: false
+  ## Dump output MetaData into a json file. (default: false)
+  writeMetaDataJson: false
+  ## Download thumbnail into a file. (default: false)
+  writeThumbnail: false
   ## Wait until the broadcast goes live, then start recording. (default: true)
   waitForLive: true
   ## How many seconds between checks to see if broadcast is live. (default: 5s)

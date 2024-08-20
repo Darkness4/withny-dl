@@ -2,8 +2,11 @@
 package withny
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -149,6 +152,18 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		log.Err(err).Msg("notify failed")
 	}
 
+	fnameInfo, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "info.json")
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+	fnameThumb, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "png")
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
 	fnameStream, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "ts")
 	if err != nil {
 		span.RecordError(err)
@@ -198,6 +213,45 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		nameAudioConcatenated,
 		".combined.m4a",
 	)
+
+	if w.params.WriteMetaDataJSON {
+		w.log.Info().Str("fnameInfo", fnameInfo).Msg("writing info json")
+		func() {
+			var buf bytes.Buffer
+			if err := json.NewEncoder(&buf).Encode(meta); err != nil {
+				w.log.Error().Err(err).Msg("failed to encode meta in info json")
+				return
+			}
+			if err := os.WriteFile(fnameInfo, buf.Bytes(), 0o755); err != nil {
+				w.log.Error().Err(err).Msg("failed to write meta in info json")
+				return
+			}
+		}()
+	}
+
+	if w.params.WriteThumbnail {
+		w.log.Info().Str("fnameThumb", fnameThumb).Msg("writing thunnail")
+		func() {
+			url := meta.Stream.ThumbnailURL
+			resp, err := w.Get(url)
+			if err != nil {
+				w.log.Error().Err(err).Msg("failed to fetch thumbnail")
+				return
+			}
+			defer resp.Body.Close()
+			out, err := os.Create(fnameThumb)
+			if err != nil {
+				w.log.Error().Err(err).Msg("failed to open thumbnail file")
+				return
+			}
+			defer out.Close()
+			_, err = io.Copy(out, resp.Body)
+			if err != nil {
+				w.log.Error().Err(err).Msg("failed to download thumbnail file")
+				return
+			}
+		}()
+	}
 
 	span.AddEvent("downloading")
 	state.DefaultState.SetChannelState(
