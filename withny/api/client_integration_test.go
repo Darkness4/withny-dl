@@ -14,10 +14,17 @@ import (
 	"github.com/Darkness4/withny-dl/utils/secret"
 	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
 
-func TestLogin(t *testing.T) {
+func init() {
+	log.Logger = log.Logger.With().Caller().Logger()
+	_ = godotenv.Load(".env")
+	_ = godotenv.Load(".env.test")
+}
+
+func TestClient(t *testing.T) {
 	// Arrange
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	require.NoError(t, err)
@@ -52,7 +59,7 @@ func TestLogin(t *testing.T) {
 		)
 		require.NoError(t, err)
 		client.SetCredentials(res)
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 		res2, err := client.LoginWithRefreshToken(
 			context.Background(),
 			res.RefreshToken,
@@ -75,6 +82,29 @@ func TestLogin(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, time2.Time)
 		require.Greater(t, time2.Time.Unix(), time.Time.Unix())
+	})
+
+	t.Run("Token-based authentication", func(t *testing.T) {
+		// Act
+		res, err := client.LoginWithUserPassword(
+			context.Background(),
+			saved.Username, saved.Password,
+		)
+		require.NoError(t, err)
+
+		time.Sleep(5 * time.Second)
+
+		static := secret.Static{
+			SavedCredentials: api.SavedCredentials{
+				Token:        res.Token,
+				RefreshToken: res.RefreshToken,
+			},
+		}
+		client := api.NewClient(hclient, &static)
+		err = client.Login(context.Background())
+
+		// Assert
+		require.NoError(t, err)
 	})
 
 	t.Run("Get user", func(t *testing.T) {
@@ -146,9 +176,4 @@ func TestLogin(t *testing.T) {
 		require.NotEmpty(t, playlists)
 		require.Greater(t, len(playlists), 0)
 	})
-}
-
-func init() {
-	_ = godotenv.Load(".env")
-	_ = godotenv.Load(".env.test")
 }

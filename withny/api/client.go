@@ -110,7 +110,10 @@ func (c *Client) Login(ctx context.Context) (err error) {
 			if saved.Username != "" {
 				creds, err = c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
 			} else if saved.Token != "" {
-				creds.Token = saved.Token
+				// Hijack the client token to override authorization header
+				c.credentials.Token = saved.Token
+				c.credentials.TokenType = "Bearer"
+				c.credentials.RefreshToken = saved.RefreshToken
 				creds, err = c.LoginWithRefreshToken(ctx, saved.RefreshToken)
 			}
 		}
@@ -122,7 +125,10 @@ func (c *Client) Login(ctx context.Context) (err error) {
 		if saved.Username != "" {
 			creds, err = c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
 		} else if saved.Token != "" {
-			creds.Token = saved.Token
+			// Hijack the client token to override authorization header
+			c.credentials.Token = saved.Token
+			c.credentials.TokenType = "Bearer"
+			c.credentials.RefreshToken = saved.RefreshToken
 			creds, err = c.LoginWithRefreshToken(ctx, saved.RefreshToken)
 		}
 	default:
