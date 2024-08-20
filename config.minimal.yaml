@@ -1,4 +1,4 @@
-credentialsFile: '/config/credentials.yaml'
+credentialsFile: 'credentials.yaml'
 
 notifier:
   enabled: true
