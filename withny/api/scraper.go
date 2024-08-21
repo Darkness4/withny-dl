@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// Scraper is used to scrape the withny website.
 type Scraper struct {
 	*Client
 }
@@ -59,6 +60,7 @@ func (s *Scraper) FindGraphQLAndStreamUUID(
 var graphqlURLRegex = regexp.MustCompile(`(?m)"https:\\u002F\\u002F[^"]*\\u002Fgraphql"`)
 var streamUUIDRegex = regexp.MustCompile(`(?m)uuid="([^"]*)"`)
 
+// FindGraphQLEndpointAndStreamUUID finds the GraphQL endpoint and stream UUID.
 func FindGraphQLEndpointAndStreamUUID(r io.Reader) (endpoint, suuid string, err error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {

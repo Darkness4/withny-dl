@@ -182,17 +182,16 @@ func (w *WebSocket) WatchComments(
 	}
 }
 
+// ConnectionInit initializes the connection to the WebSocket.
 func (w *WebSocket) ConnectionInit(ctx context.Context, conn *websocket.Conn) error {
 	initMsgJSON, err := json.Marshal(graphql.ConnectionInit)
 	if err != nil {
 		return err
 	}
-	if err := conn.Write(ctx, websocket.MessageText, initMsgJSON); err != nil {
-		return err
-	}
-	return nil
+	return conn.Write(ctx, websocket.MessageText, initMsgJSON)
 }
 
+// Subscribe subscribes to the WebSocket.
 func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamID string) error {
 	query := graphql.Query{
 		Query:     fmt.Sprintf(queryFormat, streamID),
@@ -215,8 +214,5 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 	if err != nil {
 		return err
 	}
-	if err := conn.Write(ctx, websocket.MessageText, msgJSON); err != nil {
-		return err
-	}
-	return nil
+	return conn.Write(ctx, websocket.MessageText, msgJSON)
 }

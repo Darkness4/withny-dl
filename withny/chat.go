@@ -13,11 +13,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// Chat encapsulates the withny chat.
 type Chat struct {
 	ChannelID      string
 	OutputFileName string
 }
 
+// DownloadChat downloads a withny chat.
 func DownloadChat(ctx context.Context, client *api.Client, chat Chat) error {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "withny.downloadChat", trace.WithAttributes(
 		attribute.String("channel_id", chat.ChannelID),

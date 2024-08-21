@@ -77,12 +77,14 @@ type AgencySecret struct {
 	Name        string `json:"name"`
 }
 
+// WSCommentResponse is the response of the WebSocket GraphQL Comments API.
 type WSCommentResponse struct {
 	Data struct {
 		OnPostComment Comment `json:"onPostComment"`
 	} `json:"data"`
 }
 
+// Comment is the comment of the stream.
 type Comment struct {
 	StreamUUID   string      `json:"streamUUID"`
 	CommentUUID  string      `json:"commentUUID"`
