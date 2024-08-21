@@ -2,7 +2,6 @@
 package withny
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -223,12 +222,12 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	if w.params.WriteMetaDataJSON {
 		w.log.Info().Str("fnameInfo", fnameInfo).Msg("writing info json")
 		func() {
-			var buf bytes.Buffer
-			if err := json.NewEncoder(&buf).Encode(meta); err != nil {
-				w.log.Error().Err(err).Msg("failed to encode meta in info json")
+			b, err := json.MarshalIndent(meta, "", "  ")
+			if err != nil {
+				w.log.Error().Err(err).Msg("failed to marshal meta")
 				return
 			}
-			if err := os.WriteFile(fnameInfo, buf.Bytes(), 0o755); err != nil {
+			if err := os.WriteFile(fnameInfo, b, 0o755); err != nil {
 				w.log.Error().Err(err).Msg("failed to write meta in info json")
 				return
 			}
