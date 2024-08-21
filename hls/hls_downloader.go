@@ -226,7 +226,7 @@ func (hls *Downloader) fillQueue(
 					}
 				}
 
-				if lastFragmentName >= fragmentName &&
+				if lastFragmentName == fragmentName &&
 					((useTimeBasedSorting && lastFragmentTime.Compare(fragmentTime) >= 0) || !useTimeBasedSorting) {
 					newIdx = i + 1
 				}
