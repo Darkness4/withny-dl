@@ -9,8 +9,8 @@ import (
 	"github.com/Darkness4/withny-dl/withny/api"
 )
 
-// PrepareFile prepares a file with a unique name.
-func PrepareFile(
+// PrepareFileAutoRename prepares a file with a unique name.
+func PrepareFileAutoRename(
 	outFormat string,
 	meta api.MetaData,
 	labels map[string]string,
@@ -33,6 +33,25 @@ func PrepareFile(
 			break
 		}
 		n++
+	}
+
+	// Mkdir parents dirs
+	if err := os.MkdirAll(filepath.Dir(fName), 0o755); err != nil {
+		panic(err)
+	}
+	return fName, nil
+}
+
+// PrepareFile prepares a file with a formatted name.
+func PrepareFile(
+	outFormat string,
+	meta api.MetaData,
+	labels map[string]string,
+	ext string,
+) (fName string, err error) {
+	fName, err = FormatOutput(outFormat, meta, labels, ext)
+	if err != nil {
+		return "", err
 	}
 
 	// Mkdir parents dirs

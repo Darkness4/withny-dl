@@ -151,7 +151,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		log.Err(err).Msg("notify failed")
 	}
 
-	fnameInfo, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "info.json")
+	fnameInfo, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "info.json")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -163,26 +163,31 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
-	fnameStream, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "ts")
+	fnameStream, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "ts")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
-	fnameChat, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "chat.json")
+	fnameChat, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "chat.json")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	fnameMuxedExt := strings.ToLower(w.params.RemuxFormat)
-	fnameMuxed, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, fnameMuxedExt)
+	fnameMuxed, err := PrepareFileAutoRename(
+		w.params.OutFormat,
+		meta,
+		w.params.Labels,
+		fnameMuxedExt,
+	)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
-	fnameAudio, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "m4a")
+	fnameAudio, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "m4a")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
