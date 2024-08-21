@@ -24,6 +24,8 @@ var (
 	timeZero = time.Unix(0, 0)
 	// ErrHLSForbidden is returned when the HLS download is stopped with a forbidden error.
 	ErrHLSForbidden = errors.New("hls download stopped with forbidden error")
+	// ErrStreamEnded is returned when the HLS stream has ended.
+	ErrStreamEnded = errors.New("stream ended")
 )
 
 // Downloader is used to download HLS streams.
@@ -95,8 +97,8 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 				Int("response.status", resp.StatusCode).
 				Str("response.body", string(body)).
 				Str("method", "GET").
-				Msg("stream not ready")
-			return []Fragment{}, nil
+				Msg("stream is no more available")
+			return []Fragment{}, ErrStreamEnded
 		default:
 			hls.log.Error().
 				Str("url", url.String()).
@@ -189,6 +191,13 @@ func (hls *Downloader) fillQueue(
 		fragments, err := hls.GetFragmentURLs(ctx)
 		if err != nil {
 			span.RecordError(err)
+
+			// fillQueue will exits here because of a 404
+			if errors.Is(err, ErrStreamEnded) {
+				hls.log.Info().Msg("stream has ended")
+				return io.EOF
+			}
+
 			// Failed to fetch playlist in time
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, syscall.ECONNRESET) {
 				errorCount++
@@ -205,7 +214,7 @@ func (hls *Downloader) fillQueue(
 					continue
 				}
 			}
-			// fillQueue will exits here because of a stream ended with a HLSErrorForbidden
+
 			// It can also exit here on context cancelled
 			return err
 		}
