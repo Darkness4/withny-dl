@@ -134,6 +134,7 @@ func Do(ctx context.Context, output string, inputs []string, opts ...Option) err
 
 	// If mixed formats (adts vs asc), we should remux the others first using intermediates or FIFO
 	if areFormatMixed(validInputs) {
+		log.Warn().Msg("mixed formats detected, using intermediates or FIFO to remux files first")
 		i, useFIFO, err := remuxMixedTS(ctx, validInputs, opts...)
 		if err != nil {
 			span.RecordError(err)
