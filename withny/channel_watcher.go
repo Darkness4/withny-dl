@@ -157,7 +157,12 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
-	fnameThumb, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "png")
+	var fnameThumb string
+	if w.params.Concat {
+		fnameThumb, err = PrepareFile(w.params.OutFormat, meta, w.params.Labels, "avif")
+	} else {
+		fnameThumb, err = PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "avif")
+	}
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
