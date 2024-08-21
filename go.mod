@@ -5,10 +5,12 @@ go 1.22
 toolchain go1.22.6
 
 require (
+	github.com/coder/websocket v1.8.12
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-pointer v0.0.1
@@ -46,7 +48,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -19,16 +20,16 @@ type LoginResponse struct {
 
 // GetUserResponse is the response of the get user request.
 type GetUserResponse struct {
-	ID                            int64  `json:"id"`
-	UUID                          string `json:"uuid"`
-	Username                      string `json:"username"`
-	Name                          string `json:"name"`
-	ProfileText                   string `json:"profileText"`
-	ProfileImageURL               string `json:"profileImageUrl"`
-	HeaderImageURL                string `json:"headerImageUrl"`
-	Cast                          Cast   `json:"cast"`
-	CreateRoomNotificationEnabled bool   `json:"createRoomNotificationEnabled"`
-	ProfileTextPlain              string `json:"profileTextPlain"`
+	ID                            json.Number `json:"id"`
+	UUID                          string      `json:"uuid"`
+	Username                      string      `json:"username"`
+	Name                          string      `json:"name"`
+	ProfileText                   string      `json:"profileText"`
+	ProfileImageURL               string      `json:"profileImageUrl"`
+	HeaderImageURL                string      `json:"headerImageUrl"`
+	Cast                          Cast        `json:"cast"`
+	CreateRoomNotificationEnabled bool        `json:"createRoomNotificationEnabled"`
+	ProfileTextPlain              string      `json:"profileTextPlain"`
 }
 
 // GetStreamsResponse is the response of the get streams request.
@@ -41,18 +42,18 @@ type GetStreamsResponseElement struct {
 	About           string      `json:"about"`
 	ThumbnailURL    string      `json:"thumbnailUrl"`
 	BillingMode     string      `json:"billingMode"`
-	Price           int64       `json:"price"`
+	Price           json.Number `json:"price"`
 	StreamingMethod string      `json:"streamingMethod"`
 	StartedAt       time.Time   `json:"startedAt"`
 	ClosedAt        interface{} `json:"closedAt"`
-	DeviceID        int64       `json:"deviceId"`
+	DeviceID        json.Number `json:"deviceId"`
 	Cast            Cast        `json:"cast"`
 	HasTicket       bool        `json:"hasTicket"`
 }
 
 // Cast is the cast of the user.
 type Cast struct {
-	ID                      int64                    `json:"id"`
+	ID                      json.Number              `json:"id"`
 	UUID                    string                   `json:"uuid"`
 	Coupon                  string                   `json:"coupon"`
 	ProfileImageURL         string                   `json:"profileImageUrl"`
@@ -74,4 +75,30 @@ type AgencySecret struct {
 	UUID        string `json:"uuid"`
 	ChannelName string `json:"username"`
 	Name        string `json:"name"`
+}
+
+type WSCommentResponse struct {
+	Data struct {
+		OnPostComment Comment `json:"onPostComment"`
+	} `json:"data"`
+}
+
+type Comment struct {
+	StreamUUID   string      `json:"streamUUID"`
+	CommentUUID  string      `json:"commentUUID"`
+	UserUUID     string      `json:"userUUID"`
+	Username     string      `json:"username"`
+	Name         string      `json:"name"`
+	ContentType  string      `json:"contentType"`
+	Content      string      `json:"content"`
+	TipAmount    json.Number `json:"tipAmount"`
+	ItemID       string      `json:"itemID"`
+	ItemName     string      `json:"itemName"`
+	ItemURI      string      `json:"itemURI"`
+	AnimationURI string      `json:"animationURI"`
+	ItemPower    json.Number `json:"itemPower"`
+	ItemLifetime json.Number `json:"itemLifetime"`
+	CreatedAt    *string     `json:"createdAt"`
+	UpdatedAt    *string     `json:"updatedAt"`
+	DeletedAt    *string     `json:"deletedAt"`
 }
