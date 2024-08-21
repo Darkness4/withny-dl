@@ -280,6 +280,11 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 			continue
 		}
 
+		// Ignore files without video or audio
+		if ok, err := probe.ContainsVideoOrAudio(de.Name()); err != nil || !ok {
+			continue
+		}
+
 		names = append(names, de.Name())
 	}
 
