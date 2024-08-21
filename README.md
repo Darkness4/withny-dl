@@ -283,8 +283,8 @@ defaultParams:
   writeThumbnail: false
   ## Wait until the broadcast goes live, then start recording. (default: true)
   waitForLive: true
-  ## How many seconds between checks to see if broadcast is live. (default: 5s)
-  waitPollInterval: '5s'
+  ## How many seconds between checks to see if broadcast is live. (default: 10s)
+  waitPollInterval: '10s'
   ## Remux recordings into mp4/m4a after it is finished. (default: true)
   remux: true
   ## Remux format (default: mp4)

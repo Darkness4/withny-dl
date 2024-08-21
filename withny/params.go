@@ -63,7 +63,7 @@ var DefaultParams = Params{
 	WriteMetaDataJSON:      false,
 	WriteThumbnail:         false,
 	WaitForLive:            true,
-	WaitPollInterval:       5 * time.Second,
+	WaitPollInterval:       10 * time.Second,
 	Remux:                  true,
 	RemuxFormat:            "mp4",
 	Concat:                 true,

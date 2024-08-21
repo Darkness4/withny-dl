@@ -36,7 +36,7 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 		PacketLossMax:          20,
 		OutFormat:              "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}",
 		WaitForLive:            true,
-		WaitPollInterval:       5 * time.Second,
+		WaitPollInterval:       10 * time.Second,
 		Remux:                  true,
 		Concat:                 true,
 		KeepIntermediates:      true,
