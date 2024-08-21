@@ -26,7 +26,7 @@ func TestScraper(t *testing.T) {
 	scraper := api.NewScraper(client)
 
 	t.Run("FindGraphQLAndStreamUUID", func(t *testing.T) {
-		out, suuid, err := scraper.FindGraphQLAndStreamUUID(context.Background())
+		out, suuid, err := scraper.FindGraphQLAndStreamUUID(context.Background(), "admin")
 		require.NoError(t, err)
 		require.NotEmpty(t, out)
 		fmt.Println(out, suuid)

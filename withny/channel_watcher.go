@@ -170,6 +170,12 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
+	fnameChat, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, "chat.json")
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
 	fnameMuxedExt := strings.ToLower(w.params.RemuxFormat)
 	fnameMuxed, err := PrepareFile(w.params.OutFormat, meta, w.params.Labels, fnameMuxedExt)
 	if err != nil {
@@ -271,11 +277,23 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		log.Err(err).Msg("notify failed")
 	}
 
+	chatDownloadCtx, chatDownloadCancel := context.WithCancel(ctx)
+	go func() {
+		if err := DownloadChat(chatDownloadCtx, w.Client, Chat{
+			ChannelID:      w.channelID,
+			OutputFileName: fnameChat,
+		}); err != nil {
+			w.log.Error().Err(err).Msg("chat download failed")
+		}
+	}()
+
 	dlErr := DownloadLiveStream(ctx, w.Client, LiveStream{
 		MetaData:       meta,
 		Params:         w.params,
 		OutputFileName: fnameStream,
 	})
+
+	chatDownloadCancel()
 
 	span.AddEvent("post-processing")
 	end := metrics.TimeStartRecording(

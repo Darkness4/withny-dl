@@ -2,6 +2,7 @@ package withny
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
@@ -42,6 +43,12 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 
 	playlists, err := client.GetPlaylists(ctx, playbackURL)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+	if len(playlists) == 0 {
+		err := errors.New("no playlists found")
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
@@ -110,6 +117,8 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	// Actually download. It will block until the download is finished.
 	file, err := os.Create(ls.OutputFileName)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	defer file.Close()

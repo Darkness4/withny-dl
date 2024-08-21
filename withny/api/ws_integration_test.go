@@ -25,7 +25,7 @@ func TestWebSocket(t *testing.T) {
 	}
 	client := api.NewClient(hclient, &secret.UserPasswordFromEnv{})
 	scraper := api.NewScraper(client)
-	wsURL, suuid, err := scraper.FindGraphQLAndStreamUUID(context.Background())
+	wsURL, suuid, err := scraper.FindGraphQLAndStreamUUID(context.Background(), "admin")
 	require.NoError(t, err)
 	ws := api.NewWebSocket(client, wsURL)
 

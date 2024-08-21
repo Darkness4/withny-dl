@@ -38,7 +38,7 @@ const queryFormat = `subscription MySubscription {
 	}
 }`
 
-// WebSocket is used to interact with the FC2 WebSocket.
+// WebSocket is used to interact with the withny WebSocket.
 type WebSocket struct {
 	*Client
 	url         *neturl.URL

@@ -26,11 +26,12 @@ func NewScraper(client *Client) *Scraper {
 // we'll just scrape it.
 func (s *Scraper) FindGraphQLAndStreamUUID(
 	ctx context.Context,
+	channelID string,
 ) (endpoint, suuid string, err error) {
 	req, err := s.NewAuthRequestWithContext(
 		ctx,
 		"GET",
-		"https://www.withny.fun/channels/admin",
+		fmt.Sprintf("https://www.withny.fun/channels/%s", channelID),
 		nil,
 	)
 	if err != nil {
