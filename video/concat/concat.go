@@ -281,7 +281,10 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 		}
 
 		// Ignore files without video or audio
-		if ok, err := probe.ContainsVideoOrAudio(de.Name()); err != nil || !ok {
+		if ok, err := probe.ContainsVideoOrAudio(filepath.Join(path, de.Name())); err != nil {
+			log.Err(err).Msg("failed to probe file to determine format")
+			continue
+		} else if !ok {
 			continue
 		}
 
