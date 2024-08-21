@@ -248,7 +248,7 @@ func (hls *Downloader) fillQueue(
 		}
 
 		// fillQueue will also exit here if the stream has ended (and do not send any fragment)
-		if time.Since(lastFragmentReceivedTimestamp) > 30*time.Second {
+		if time.Since(lastFragmentReceivedTimestamp) > 5*time.Minute {
 			hls.log.Warn().
 				Time("lastTime", lastFragmentReceivedTimestamp).
 				Msg("timeout receiving new fragments, abort")
