@@ -277,14 +277,16 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	}
 
 	chatDownloadCtx, chatDownloadCancel := context.WithCancel(ctx)
-	go func() {
-		if err := DownloadChat(chatDownloadCtx, w.Client, Chat{
-			ChannelID:      w.channelID,
-			OutputFileName: fnameChat,
-		}); err != nil {
-			w.log.Error().Err(err).Msg("chat download failed")
-		}
-	}()
+	if w.params.WriteChat {
+		go func() {
+			if err := DownloadChat(chatDownloadCtx, w.Client, Chat{
+				ChannelID:      w.channelID,
+				OutputFileName: fnameChat,
+			}); err != nil {
+				w.log.Error().Err(err).Msg("chat download failed")
+			}
+		}()
+	}
 
 	dlErr := DownloadLiveStream(ctx, w.Client, LiveStream{
 		MetaData:       meta,
