@@ -188,6 +188,11 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 
 	go func() {
 		if err := client.LoginLoop(ctx); err != nil {
+			if errors.Is(err, context.Canceled) {
+				log.Info().Msg("abort login")
+				return
+			}
+
 			log.Fatal().Err(err).Msg("failed to login")
 		}
 	}()
