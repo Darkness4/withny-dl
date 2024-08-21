@@ -178,7 +178,16 @@ Available format options:
    --quality.min-framerate value                            Minimum inclusive framerate of the stream. (default: 0)
    --quality.min-height value                               Minimum inclusive height of the stream. (default: 0)
    --quality.min-width value                                Minimum inclusive width of the stream. (default: 0)
+   --write-chat                                             Save live chat into a json file. (default: false)
+   --write-metadata-json                                    Dump output stream MetaData into a json file. (default: false)
+   --write-thumbnail                                        Download thumbnail into a file. (default: false)
 
+GLOBAL OPTIONS:
+   --debug        (default: false) [$DEBUG]
+   --trace        (default: false) [$TRACE]
+   --log-json     (default: false) [$LOG_JSON]
+   --help, -h     show help
+   --version, -v  print the version
 ```
 
 ### Download multiple live withny streams
@@ -196,6 +205,7 @@ OPTIONS:
 
 GLOBAL OPTIONS:
    --debug        (default: false) [$DEBUG]
+   --trace        (default: false) [$TRACE]
    --log-json     (default: false) [$LOG_JSON]
    --help, -h     show help
    --version, -v  print the version
@@ -265,6 +275,12 @@ defaultParams:
   outFormat: '{{ .ChannelID }} {{ .ChannelName }}/{{ .Date }} {{ .Title }}.{{ .Ext }}'
   ## Allow a maximum of packet loss before aborting stream download. (default: 20)
   packetLossMax: 20
+  ## Save live chat into a json file. (default: false)
+  writeChat: false
+  ## Dump output MetaData into a json file. (default: false)
+  writeMetaDataJson: false
+  ## Download thumbnail into a file. (default: false)
+  writeThumbnail: false
   ## Wait until the broadcast goes live, then start recording. (default: true)
   waitForLive: true
   ## How many seconds between checks to see if broadcast is live. (default: 5s)
