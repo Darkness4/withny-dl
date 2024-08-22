@@ -305,7 +305,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	})
 	chatDownloadCancel()
 
-	if errors.Is(dlErr, api.ErrUnauthorized) {
+	if errors.Is(dlErr, api.UnauthorizedError{}) {
 		span.RecordError(dlErr)
 		span.SetStatus(codes.Error, dlErr.Error())
 		log.Err(dlErr).Msg("unauthorized")

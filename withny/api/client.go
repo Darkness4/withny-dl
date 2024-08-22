@@ -25,11 +25,15 @@ const (
 	streamPlaybackURL = streamsURL + "/%s/playback-url"
 )
 
+// UnauthorizedError is an error for unauthorized requests.
 type UnauthorizedError struct {
-	Err      error
+	Err error
+
+	// StreamID is stored to retry the request.
 	StreamID string
 }
 
+// Error returns the error message.
 func (e UnauthorizedError) Error() string {
 	return fmt.Sprintf("unauthorized: %s", e.Err)
 }
