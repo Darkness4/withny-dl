@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"path/filepath"
@@ -107,7 +108,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 				Str("method", "GET").
 				Msg("http error")
 			metrics.Downloads.Errors.Add(ctx, 1)
-			return []Fragment{}, errors.New("http error")
+			return []Fragment{}, fmt.Errorf("http error: %d", resp.StatusCode)
 		}
 	}
 
@@ -302,7 +303,7 @@ func (hls *Downloader) download(
 		}
 
 		metrics.Downloads.Errors.Add(ctx, 1)
-		return errors.New("http error")
+		return fmt.Errorf("http error: %d", resp.StatusCode)
 	}
 
 	_, err = io.Copy(w, resp.Body)
@@ -436,7 +437,7 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 				Str("response.body", string(body)).
 				Str("method", "GET").
 				Msg("http error")
-			return false, errors.New("http error")
+			return false, fmt.Errorf("http error: %d", resp.StatusCode)
 		}
 	}
 

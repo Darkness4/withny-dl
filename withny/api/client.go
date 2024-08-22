@@ -25,6 +25,15 @@ const (
 	streamPlaybackURL = streamsURL + "/%s/playback-url"
 )
 
+type UnauthorizedError struct {
+	Err      error
+	StreamID string
+}
+
+func (e UnauthorizedError) Error() string {
+	return fmt.Sprintf("unauthorized: %s", e.Err)
+}
+
 // Claims is the JWT claims for the withny API.
 type Claims struct {
 	jwt.RegisteredClaims
@@ -158,12 +167,13 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
+		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		body, _ := io.ReadAll(res.Body)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
-		return GetUserResponse{}, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return GetUserResponse{}, err
 	}
 
 	var parsed GetUserResponse
@@ -198,11 +208,12 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
+		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
-		return GetStreamsResponse{}, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return GetStreamsResponse{}, err
 	}
 
 	var parsed GetStreamsResponse
@@ -242,11 +253,12 @@ func (c *Client) LoginWithRefreshToken(
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
+		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
-		return Credentials{}, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return Credentials{}, err
 	}
 
 	var lr Credentials
@@ -290,11 +302,12 @@ func (c *Client) LoginWithUserPassword(
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
+		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
-		return Credentials{}, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return Credentials{}, err
 	}
 
 	var lr Credentials
@@ -328,12 +341,19 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
+		if res.StatusCode == http.StatusUnauthorized {
+			return "", UnauthorizedError{
+				Err:      fmt.Errorf("unauthorized"),
+				StreamID: streamID,
+			}
+		}
 		body, _ := io.ReadAll(res.Body)
+		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
-		return "", fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return "", err
 	}
 
 	var parsed string
@@ -368,11 +388,12 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
+		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
-		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+		return nil, err
 	}
 
 	return ParseM3U8(res.Body), nil

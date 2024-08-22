@@ -38,6 +38,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		log.Err(err).Msg("failed to fetch playback URL")
 		return err
 	}
 
@@ -51,6 +52,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 		err := errors.New("no playlists found")
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		log.Err(err).Msg("no playlists found")
 		return err
 	}
 
@@ -119,6 +121,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		log.Err(err).Msg("failed to create file")
 		return err
 	}
 	defer file.Close()
@@ -126,6 +129,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	if err = downloader.Read(ctx, file); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		log.Err(err).Msg("failed to download")
 		return err
 	}
 

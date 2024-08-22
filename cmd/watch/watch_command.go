@@ -32,6 +32,7 @@ import (
 	"github.com/Darkness4/withny-dl/state"
 	"github.com/Darkness4/withny-dl/telemetry"
 	"github.com/Darkness4/withny-dl/utils/secret"
+	"github.com/Darkness4/withny-dl/utils/try"
 	"github.com/Darkness4/withny-dl/withny"
 	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/Darkness4/withny-dl/withny/cleaner"
@@ -295,6 +296,22 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 						err,
 					); err != nil {
 						log.Err(err).Msg("notify failed")
+					}
+
+					log.Error().Msg("retrying to login and backoff until success")
+					var authErr api.UnauthorizedError
+					if errors.As(err, &authErr) {
+						err := try.DoExponentialBackoff(60, 1*time.Minute, 2, 60*time.Minute, func() error {
+							if err := client.Login(ctx); err != nil {
+								log.Fatal().Err(err).Msg("failed to login")
+							}
+
+							_, err := client.GetStreamPlaybackURL(ctx, authErr.StreamID)
+							return err
+						})
+						if err != nil {
+							log.Err(err).Msg("failed to login and fetch playback URL")
+						}
 					}
 				} else {
 					state.DefaultState.SetChannelState(

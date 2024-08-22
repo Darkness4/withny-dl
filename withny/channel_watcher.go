@@ -303,8 +303,14 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		Params:         w.params,
 		OutputFileName: fnameStream,
 	})
-
 	chatDownloadCancel()
+
+	if errors.Is(dlErr, api.ErrUnauthorized) {
+		span.RecordError(dlErr)
+		span.SetStatus(codes.Error, dlErr.Error())
+		log.Err(dlErr).Msg("unauthorized")
+		return dlErr
+	}
 
 	span.AddEvent("post-processing")
 	end := metrics.TimeStartRecording(
