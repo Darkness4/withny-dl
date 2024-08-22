@@ -27,9 +27,9 @@ defaultParams:
     ## Width is usually: 1920, 1280, 854, 640, 284.
     minWidth: 0
     maxWidth: 0
-    ## Framerate is usually: 60, 30.
-    minFramerate: 0.0
-    maxFramerate: 0.0
+    ## FrameRate is usually: 60, 30.
+    minFrameRate: 0.0
+    maxFrameRate: 0.0
     ## Bandwidth is in bits/s.
     minBandwidth: 0
     maxBandwidth: 0
