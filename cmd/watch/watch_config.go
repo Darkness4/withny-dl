@@ -15,10 +15,11 @@ import (
 
 // Config is the configuration for the watch command.
 type Config struct {
-	Notifier        NotifierConfig                   `yaml:"notifier,omitempty"`
-	CredentialsFile string                           `yaml:"credentialsFile,omitempty"`
-	DefaultParams   withny.OptionalParams            `yaml:"defaultParams,omitempty"`
-	Channels        map[string]withny.OptionalParams `yaml:"channels,omitempty"`
+	Notifier           NotifierConfig                   `yaml:"notifier,omitempty"`
+	RateLimitAvoidance RateLimitAvoidance               `yaml:"rateLimitAvoidance,omitempty"`
+	CredentialsFile    string                           `yaml:"credentialsFile,omitempty"`
+	DefaultParams      withny.OptionalParams            `yaml:"defaultParams,omitempty"`
+	Channels           map[string]withny.OptionalParams `yaml:"channels,omitempty"`
 }
 
 // NotifierConfig is the configuration for the notifier.
@@ -28,6 +29,17 @@ type NotifierConfig struct {
 	NoPriority                 bool     `yaml:"noPriority,omitempty"`
 	URLs                       []string `yaml:"urls,omitempty"`
 	notify.NotificationFormats `yaml:"notificationFormats,omitempty"`
+}
+
+// RateLimitAvoidance is the configuration for the rate limit avoidance.
+type RateLimitAvoidance struct {
+	PollingPacing time.Duration `yaml:"pollingPacing,omitempty"`
+}
+
+func applyDefaults(config *Config) {
+	if config.RateLimitAvoidance.PollingPacing == 0 {
+		config.RateLimitAvoidance.PollingPacing = 500 * time.Millisecond
+	}
 }
 
 func loadConfig(filename string) (*Config, error) {
@@ -41,6 +53,7 @@ func loadConfig(filename string) (*Config, error) {
 	if err := yaml.NewDecoder(file).Decode(&config); err != nil {
 		return nil, err
 	}
+	applyDefaults(config)
 	return config, err
 }
 

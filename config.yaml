@@ -115,6 +115,12 @@ defaultParams:
   ## The value of the label can be invoked in the go template by using {{ .Labels.Key }}.
   labels: {}
 
+rateLimitAvoidance:
+  ## Spread the watchers over time to avoid rate limiting. (default 500ms)
+  ##
+  ## A zero value means all watchers will start at the same time.
+  pollingPacing: 500ms
+
 ## A list of channels.
 ##
 ## The keys are the channel IDs/handles without the '@'.

@@ -223,6 +223,7 @@ To configure the watcher, you must provide a configuration file. The configurati
 
 ```yaml
 ---
+---
 ## [REQUIRED] Path to the file containing the credentials. (default: '')
 ##
 ## Example of content:
@@ -346,6 +347,12 @@ channels:
   'admin':
     labels:
       EnglishName: Admin
+
+rateLimitAvoidance:
+  ## Spread the watchers over time to avoid rate limiting. (default: 500ms)
+  ##
+  ## A zero value means all watchers will start at the same time.
+  pollingPacing: 500ms
 
 ## Notify about the state of the watcher.
 ##
