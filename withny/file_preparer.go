@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/Darkness4/withny-dl/withny/api"
+	"github.com/rs/zerolog/log"
 )
 
 // PrepareFileAutoRename prepares a file with a unique name.
@@ -27,6 +28,7 @@ func PrepareFileAutoRename(
 		}
 		fName, err = FormatOutput(outFormat, meta, labels, extn)
 		if err != nil {
+			log.Error().Err(err).Msg("failed to format output")
 			return "", err
 		}
 		if _, err := os.Stat(fName); errors.Is(err, os.ErrNotExist) {
@@ -51,6 +53,7 @@ func PrepareFile(
 ) (fName string, err error) {
 	fName, err = FormatOutput(outFormat, meta, labels, ext)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to format output")
 		return "", err
 	}
 

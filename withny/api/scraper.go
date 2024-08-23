@@ -6,6 +6,8 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Scraper is used to scrape the withny website.
@@ -41,16 +43,19 @@ func (s *Scraper) FindGraphQLAndStreamUUID(
 
 	resp, err := s.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to fetch channel page")
 		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	endpoint, suuid, err = FindGraphQLEndpointAndStreamUUID(resp.Body)
 	if err != nil {
+		log.Err(err).Msg("failed to find graphql endpoint")
 		return "", "", err
 	}
 	endpoint, err = strconv.Unquote(endpoint)
 	if err != nil {
+		log.Err(err).Msg("failed to unquote graphql endpoint")
 		return "", "", err
 	}
 	// Hack from the website itself.
@@ -64,6 +69,7 @@ var streamUUIDRegex = regexp.MustCompile(`(?m)uuid="([^"]*)"`)
 func FindGraphQLEndpointAndStreamUUID(r io.Reader) (endpoint, suuid string, err error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
+		log.Err(err).Msg("failed to read body")
 		return "", "", err
 	}
 	gql := graphqlURLRegex.FindString(string(buf))

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Darkness4/withny-dl/utils"
 	"github.com/Darkness4/withny-dl/withny/api"
+	"github.com/rs/zerolog/log"
 )
 
 // FormatOutput formats the output file name.
@@ -35,6 +36,7 @@ func FormatOutput(
 
 	tmpl, err := template.New("gotpl").Parse(outFormat)
 	if err != nil {
+		log.Err(err).Msg("failed to parse output format")
 		return "", err
 	}
 
@@ -45,6 +47,7 @@ func FormatOutput(
 
 	var formatted bytes.Buffer
 	if err = tmpl.Execute(&formatted, formatInfo); err != nil {
+		log.Err(err).Msg("failed to execute template with output format")
 		return "", err
 	}
 

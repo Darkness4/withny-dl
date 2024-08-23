@@ -86,6 +86,7 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 	}
 	vjson, err := json.Marshal(v)
 	if err != nil {
+		w.log.Err(err).Msg("failed to marshal header")
 		return nil, err
 	}
 	vb64 := base64.StdEncoding.EncodeToString(vjson)
@@ -104,6 +105,7 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 		Subprotocols: []string{"graphql-ws"},
 	})
 	if err != nil {
+		w.log.Err(err).Msg("failed to dial websocket")
 		return nil, err
 	}
 	conn.SetReadLimit(10485760) // 10 MiB
@@ -120,7 +122,7 @@ func (w *WebSocket) WatchComments(
 	// Connection init
 	go func() {
 		if err := w.ConnectionInit(ctx, conn); err != nil {
-			w.log.Error().Err(err).Msg("failed to init connection")
+			w.log.Err(err).Msg("failed to init connection")
 		}
 	}()
 
@@ -152,7 +154,7 @@ func (w *WebSocket) WatchComments(
 				// Subscribe to comments
 				go func() {
 					if err := w.Subscribe(ctx, conn, streamID); err != nil {
-						w.log.Error().Err(err).Msg("failed to subscribe")
+						w.log.Err(err).Msg("failed to subscribe")
 					}
 				}()
 			case "start_ack":
@@ -160,7 +162,7 @@ func (w *WebSocket) WatchComments(
 			case "data":
 				var resp WSCommentResponse
 				if err := json.Unmarshal(msgObj.Payload, &resp); err != nil {
-					w.log.Error().Err(err).Msg("failed to decode comment")
+					w.log.Err(err).Msg("failed to decode comment")
 					continue
 				}
 				commentChan <- &resp.Data.OnPostComment
@@ -186,6 +188,7 @@ func (w *WebSocket) WatchComments(
 func (w *WebSocket) ConnectionInit(ctx context.Context, conn *websocket.Conn) error {
 	initMsgJSON, err := json.Marshal(graphql.ConnectionInit)
 	if err != nil {
+		w.log.Err(err).Msg("failed to marshal connection init")
 		return err
 	}
 	return conn.Write(ctx, websocket.MessageText, initMsgJSON)
@@ -199,6 +202,7 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 	}
 	jsonQuery, err := json.Marshal(query)
 	if err != nil {
+		w.log.Err(err).Msg("failed to marshal query")
 		return err
 	}
 	msg := graphql.BuildSubscribeMessage(graphql.SubscribeMessagePayload{
@@ -212,6 +216,7 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 	})
 	msgJSON, err := json.Marshal(msg)
 	if err != nil {
+		w.log.Err(err).Msg("failed to marshal subscribe message")
 		return err
 	}
 	return conn.Write(ctx, websocket.MessageText, msgJSON)

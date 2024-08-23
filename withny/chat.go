@@ -30,14 +30,14 @@ func DownloadChat(ctx context.Context, client *api.Client, chat Chat) error {
 	endpoint, suuid, err := api.NewScraper(client).
 		FindGraphQLAndStreamUUID(ctx, chat.ChannelID)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to find graphql endpoint for chat")
+		log.Err(err).Msg("failed to find graphql endpoint for chat")
 		return err
 	}
 
 	ws := api.NewWebSocket(client, endpoint)
 	conn, err := ws.Dial(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to dial websocket")
+		log.Err(err).Msg("failed to dial websocket")
 		return err
 	}
 
@@ -46,40 +46,40 @@ func DownloadChat(ctx context.Context, client *api.Client, chat Chat) error {
 	go func() {
 		file, err := os.Create(chat.OutputFileName)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to create file, cannot write comments")
+			log.Err(err).Msg("failed to create file, cannot write comments")
 			return
 		}
 		defer file.Close()
 
 		if _, err := file.WriteString("[\n"); err != nil {
-			log.Error().Err(err).Msg("failed to write comment")
+			log.Err(err).Msg("failed to write comment")
 			return
 		}
 
 		for comment := range commentsCh {
 			jsonData, err := json.Marshal(comment)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal comment")
+				log.Err(err).Msg("failed to marshal comment")
 				continue
 			}
 			if _, err := file.Write(jsonData); err != nil {
-				log.Error().Err(err).Msg("failed to write comment")
+				log.Err(err).Msg("failed to write comment")
 			}
 			if _, err := file.WriteString(",\n"); err != nil {
-				log.Error().Err(err).Msg("failed to write comment")
+				log.Err(err).Msg("failed to write comment")
 			}
 		}
 
 		if _, err := file.WriteString("]\n"); err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			log.Error().Err(err).Msg("failed to write comment")
+			log.Err(err).Msg("failed to write comment")
 			return
 		}
 	}()
 	err = ws.WatchComments(ctx, conn, suuid, commentsCh)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to watch comments")
+		log.Err(err).Msg("failed to watch comments")
 		return err
 	}
 	return nil

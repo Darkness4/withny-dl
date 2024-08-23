@@ -92,6 +92,7 @@ func Scan(
 
 	if err := filepath.WalkDir(scanDirectory, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			log.Err(err).Str("path", path).Msg("failed to walk directory")
 			return err
 		}
 
@@ -124,6 +125,7 @@ func Scan(
 				// Look for .TS files with the same prefix.
 				entries, err := os.ReadDir(dir)
 				if err != nil {
+					log.Err(err).Str("dir", dir).Msg("failed to read directory")
 					return err
 				}
 
@@ -144,6 +146,7 @@ func Scan(
 
 		return nil
 	}); err != nil {
+		log.Err(err).Str("scan_directory", scanDirectory).Msg("failed to scan directory")
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return []string{}, []string{}, err
@@ -184,6 +187,7 @@ func Clean(scanDirectory string, opts ...Option) error {
 
 	queueForDeletion, queueForRenaming, err := Scan(scanDirectory, opts...)
 	if err != nil {
+		log.Err(err).Msg("failed to scan directory")
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err

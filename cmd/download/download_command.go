@@ -313,7 +313,7 @@ Available format options:
 					break
 				}
 				if err != nil {
-					log.Error().Err(err).Msg("failed to download")
+					log.Err(err).Msg("failed to download")
 				}
 				time.Sleep(time.Second)
 			}

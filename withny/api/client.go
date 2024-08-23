@@ -95,6 +95,7 @@ func (c *Client) NewAuthRequestWithContext(
 ) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
+		log.Err(err).Msg("failed to create request")
 		return nil, err
 	}
 	if c.credentials.TokenType != "" {
@@ -118,6 +119,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 		creds, err = c.loginWithSaved(ctx)
 	}
 	if err != nil {
+		log.Err(err).Msg("failed to login")
 		return err
 	}
 
@@ -131,6 +133,7 @@ func (c *Client) loginWithSaved(ctx context.Context) (Credentials, error) {
 	}
 	saved, err := c.credentialsReader.Read()
 	if err != nil {
+		log.Err(err).Msg("failed to read credentials")
 		return Credentials{}, err
 	}
 	if saved.Username != "" {
@@ -161,11 +164,13 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 		nil,
 	)
 	if err != nil {
+		log.Err(err).Msg("failed to create request")
 		return GetUserResponse{}, err
 	}
 
 	res, err := c.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to get user")
 		return GetUserResponse{}, err
 	}
 	defer res.Body.Close()
@@ -201,11 +206,13 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 		nil,
 	)
 	if err != nil {
+		log.Err(err).Msg("failed to create request")
 		return GetStreamsResponse{}, err
 	}
 
 	res, err := c.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to get streams")
 		return GetStreamsResponse{}, err
 	}
 	defer res.Body.Close()
@@ -251,6 +258,7 @@ func (c *Client) LoginWithRefreshToken(
 
 	res, err := c.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to refresh token")
 		return Credentials{}, err
 	}
 	defer res.Body.Close()
@@ -267,6 +275,7 @@ func (c *Client) LoginWithRefreshToken(
 
 	var lr Credentials
 	if err := json.NewDecoder(res.Body).Decode(&lr.LoginResponse); err != nil {
+		log.Err(err).Msg("failed to decode response")
 		return lr, err
 	}
 	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
@@ -300,6 +309,7 @@ func (c *Client) LoginWithUserPassword(
 
 	res, err := c.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to login")
 		return Credentials{}, err
 	}
 	defer res.Body.Close()
@@ -316,6 +326,7 @@ func (c *Client) LoginWithUserPassword(
 
 	var lr Credentials
 	if err := json.NewDecoder(res.Body).Decode(&lr.LoginResponse); err != nil {
+		log.Err(err).Msg("failed to decode response")
 		return lr, err
 	}
 	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
@@ -335,11 +346,13 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 		nil,
 	)
 	if err != nil {
+		log.Err(err).Msg("failed to create request")
 		return "", err
 	}
 
 	res, err := c.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to get playback URL")
 		return "", err
 	}
 	defer res.Body.Close()
@@ -375,6 +388,7 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 		nil,
 	)
 	if err != nil {
+		log.Err(err).Msg("failed to create request")
 		return nil, err
 	}
 	req.Header.Set(
@@ -386,6 +400,7 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 
 	res, err := c.Do(req)
 	if err != nil {
+		log.Err(err).Msg("failed to get playlists")
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -406,6 +421,7 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 // LoginLoop will login to withny and refresh the token when needed.
 func (c *Client) LoginLoop(ctx context.Context) error {
 	if err := c.Login(ctx); err != nil {
+		log.Err(err).Msg("failed to login to withny")
 		return err
 	}
 

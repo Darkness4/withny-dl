@@ -129,7 +129,7 @@ var Command = &cli.Command{
 		}
 		defer func() {
 			if err := shutdown(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				log.Error().Err(err).Msg("failed to shutdown OTEL SDK")
+				log.Err(err).Msg("failed to shutdown OTEL SDK")
 			}
 		}()
 
@@ -141,11 +141,13 @@ var Command = &cli.Command{
 				s := state.DefaultState.ReadState()
 				b, err := json.MarshalIndent(s, "", "  ")
 				if err != nil {
+					log.Err(err).Msg("failed to marshal state")
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				_, err = w.Write(b)
 				if err != nil {
+					log.Err(err).Msg("failed to write state")
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -287,7 +289,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 					}
 					return
 				} else if err != nil {
-					log.Error().Err(err).Msg("failed to download")
+					log.Err(err).Msg("failed to download")
 					state.DefaultState.SetChannelError(channelID, err)
 					if err := notifier.NotifyError(
 						context.Background(),
@@ -345,7 +347,7 @@ func checkVersion(ctx context.Context, client *http.Client, version string) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, versionCheckURL, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create request")
+		log.Err(err).Msg("failed to create request")
 		return
 	}
 
@@ -353,7 +355,7 @@ func checkVersion(ctx context.Context, client *http.Client, version string) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to check version")
+		log.Err(err).Msg("failed to check version")
 		return
 	}
 
@@ -369,7 +371,7 @@ func checkVersion(ctx context.Context, client *http.Client, version string) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		log.Error().Err(err).Msg("failed to decode version")
+		log.Err(err).Msg("failed to decode version")
 		return
 	}
 
@@ -391,6 +393,7 @@ func handleChannel(
 
 	meta, err := downloader.Watch(ctx)
 	if err != nil && err != io.EOF {
+		log.Err(err).Msg("watcher has stopped")
 		return api.MetaData{}, err
 	}
 	return meta, nil

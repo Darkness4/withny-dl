@@ -61,19 +61,17 @@ var Command = &cli.Command{
 			Strs("input", files).
 			Msg("concat and remuxing streams...")
 		if err := concat.Do(ctx, fnameMuxed, files); err != nil {
-			log.Error().
+			log.Err(err).
 				Str("output", fnameMuxed).
 				Strs("input", files).
-				Err(err).
 				Msg("ffmpeg concat finished with error")
 		}
 		if extractAudio {
 			log.Error().Str("output", fnameAudio).Strs("input", files).Msg("extrating audio...")
 			if err := concat.Do(ctx, fnameAudio, files, concat.WithAudioOnly()); err != nil {
-				log.Error().
+				log.Err(err).
 					Str("output", fnameAudio).
 					Strs("input", files).
-					Err(err).
 					Msg("ffmpeg audio extract finished with error")
 			}
 		}

@@ -47,6 +47,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		log.Err(err).Msg("failed to fetch playlists")
 		return err
 	}
 	if len(playlists) == 0 {

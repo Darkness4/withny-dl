@@ -139,6 +139,7 @@ func Do(ctx context.Context, output string, inputs []string, opts ...Option) err
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
+			log.Err(err).Msg("failed to remux mixed formats")
 			return err
 		}
 		validInputs = i
@@ -149,8 +150,7 @@ func Do(ctx context.Context, output string, inputs []string, opts ...Option) err
 				log.Info().Msg("cleaning up intermediate files")
 				for _, input := range i {
 					if err := os.Remove(input); err != nil {
-						log.Error().
-							Err(err).
+						log.Err(err).
 							Str("file", input).
 							Msg("failed to remove intermediate file")
 					}
@@ -265,6 +265,7 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 	base := filepath.Base(prefix)
 	entries, err := os.ReadDir(path)
 	if err != nil {
+		log.Err(err).Str("path", path).Msg("failed to read directory")
 		return err
 	}
 	names := make([]string, 0, len(entries))
@@ -274,18 +275,11 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 		}
 		finfo, err := de.Info()
 		if err != nil {
+			log.Err(err).Str("file", de.Name()).Msg("failed to get file info")
 			continue
 		}
 		// Ignore empty files
 		if finfo.Size() == 0 {
-			continue
-		}
-
-		// Ignore files without video or audio
-		if ok, err := probe.ContainsVideoOrAudio(filepath.Join(path, de.Name())); err != nil {
-			log.Err(err).Msg("failed to probe file to determine format")
-			continue
-		} else if !ok {
 			continue
 		}
 
@@ -294,10 +288,23 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 
 	selected, err := filterFiles(names, base, path, o)
 	if err != nil {
+		log.Err(err).Msg("failed to filter files")
 		return err
 	}
 
-	return Do(ctx, prefix+".combined."+remuxFormat, selected, opts...)
+	validInputs := make([]string, 0, len(selected))
+	for _, input := range selected {
+		// Ignore files without video or audio
+		if ok, err := probe.ContainsVideoOrAudio(input); err != nil {
+			log.Err(err).Str("file", input).Msg("file is not a valid video or audio file")
+			continue
+		} else if !ok {
+			continue
+		}
+		validInputs = append(validInputs, input)
+	}
+
+	return Do(ctx, prefix+".combined."+remuxFormat, validInputs, opts...)
 }
 
 func areFormatMixed(files []string) bool {

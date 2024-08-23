@@ -67,6 +67,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
 
 	online, streams, err := w.IsOnline(ctx)
 	if err != nil {
+		log.Err(err).Msg("failed to check if online")
 		return api.MetaData{}, err
 	}
 
@@ -148,13 +149,14 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		state.WithLabels(w.params.Labels),
 	)
 	if err := notifier.NotifyPreparingFiles(ctx, w.channelID, w.params.Labels, meta); err != nil {
-		log.Err(err).Msg("notify failed")
+		w.log.Err(err).Msg("notify failed")
 	}
 
 	fnameInfo, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "info.json")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare info file")
 		return err
 	}
 	var fnameThumb string
@@ -172,12 +174,14 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare stream file")
 		return err
 	}
 	fnameChat, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "chat.json")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare chat file")
 		return err
 	}
 	fnameMuxedExt := strings.ToLower(w.params.RemuxFormat)
@@ -190,12 +194,14 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare muxed file")
 		return err
 	}
 	fnameAudio, err := PrepareFileAutoRename(w.params.OutFormat, meta, w.params.Labels, "m4a")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare audio file")
 		return err
 	}
 	nameConcatenated, err := FormatOutput(
@@ -207,6 +213,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare concatenated file")
 		return err
 	}
 	nameConcatenatedPrefix := strings.TrimSuffix(
@@ -222,6 +229,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		w.log.Err(err).Msg("failed to prepare concatenated audio file")
 		return err
 	}
 	nameAudioConcatenatedPrefix := strings.TrimSuffix(
@@ -234,11 +242,11 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		func() {
 			b, err := json.MarshalIndent(meta, "", "  ")
 			if err != nil {
-				w.log.Error().Err(err).Msg("failed to marshal meta")
+				w.log.Err(err).Msg("failed to marshal meta")
 				return
 			}
 			if err := os.WriteFile(fnameInfo, b, 0o755); err != nil {
-				w.log.Error().Err(err).Msg("failed to write meta in info json")
+				w.log.Err(err).Msg("failed to write meta in info json")
 				return
 			}
 		}()
@@ -250,19 +258,19 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 			url := meta.Stream.ThumbnailURL
 			resp, err := w.Get(url)
 			if err != nil {
-				w.log.Error().Err(err).Msg("failed to fetch thumbnail")
+				w.log.Err(err).Msg("failed to fetch thumbnail")
 				return
 			}
 			defer resp.Body.Close()
 			out, err := os.Create(fnameThumb)
 			if err != nil {
-				w.log.Error().Err(err).Msg("failed to open thumbnail file")
+				w.log.Err(err).Msg("failed to open thumbnail file")
 				return
 			}
 			defer out.Close()
 			_, err = io.Copy(out, resp.Body)
 			if err != nil {
-				w.log.Error().Err(err).Msg("failed to download thumbnail file")
+				w.log.Err(err).Msg("failed to download thumbnail file")
 				return
 			}
 		}()
@@ -283,7 +291,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		w.params.Labels,
 		meta,
 	); err != nil {
-		log.Err(err).Msg("notify failed")
+		w.log.Err(err).Msg("notify failed")
 	}
 
 	chatDownloadCtx, chatDownloadCancel := context.WithCancel(ctx)
@@ -293,7 +301,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 				ChannelID:      w.channelID,
 				OutputFileName: fnameChat,
 			}); err != nil {
-				w.log.Error().Err(err).Msg("chat download failed")
+				w.log.Err(err).Msg("chat download failed")
 			}
 		}()
 	}
@@ -308,7 +316,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	if errors.Is(dlErr, api.UnauthorizedError{}) {
 		span.RecordError(dlErr)
 		span.SetStatus(codes.Error, dlErr.Error())
-		log.Err(dlErr).Msg("unauthorized")
+		w.log.Err(dlErr).Msg("unauthorized")
 		return dlErr
 	}
 
@@ -339,7 +347,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		w.params.Labels,
 		meta,
 	); err != nil {
-		log.Err(err).Msg("notify failed")
+		w.log.Err(err).Msg("notify failed")
 	}
 	w.log.Info().Msg("post-processing...")
 
@@ -423,7 +431,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		extractAudioErr == nil {
 		w.log.Info().Str("file", fnameStream).Msg("delete intermediate files")
 		if err := os.Remove(fnameStream); err != nil {
-			w.log.Error().Err(err).Msg("couldn't delete intermediate file")
+			w.log.Err(err).Msg("couldn't delete intermediate file")
 			metrics.PostProcessing.Errors.Add(ctx, 1, metric.WithAttributes(
 				attribute.String("channel_id", w.channelID),
 			))

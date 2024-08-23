@@ -63,7 +63,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 	defer cancel()
 	req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
 	if err != nil {
-		return []Fragment{}, err
+		panic(err)
 	}
 	req.Header.Set(
 		"Accept",
@@ -74,6 +74,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 
 	resp, err := hls.Client.Do(req)
 	if err != nil {
+		hls.log.Err(err).Msg("failed to fetch fragment URLs")
 		return []Fragment{}, err
 	}
 	defer resp.Body.Close()
@@ -108,7 +109,11 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 				Str("method", "GET").
 				Msg("http error")
 			metrics.Downloads.Errors.Add(ctx, 1)
-			return []Fragment{}, fmt.Errorf("http error: %d", resp.StatusCode)
+			return []Fragment{}, fmt.Errorf(
+				"http error: url=%s, status=%d, method=GET",
+				url.String(),
+				resp.StatusCode,
+			)
 		}
 	}
 
@@ -202,11 +207,10 @@ func (hls *Downloader) fillQueue(
 			// Failed to fetch playlist in time
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, syscall.ECONNRESET) {
 				errorCount++
-				hls.log.Error().
+				hls.log.Err(err).
 					Int("error.count", errorCount).
 					Int("error.max", hls.packetLossMax).
-					Err(err).
-					Msg("a playlist failed to be downloaded, retrying")
+					Msg("GetFragmentURLs failed, retrying")
 				metrics.Downloads.Errors.Add(ctx, 1)
 
 				// Ignore the error if tolerated
@@ -215,6 +219,8 @@ func (hls *Downloader) fillQueue(
 					continue
 				}
 			}
+
+			hls.log.Err(err).Msg("GetFragmentURLs failed")
 
 			// It can also exit here on context cancelled
 			return err
@@ -278,12 +284,13 @@ func (hls *Downloader) download(
 	defer cancel()
 	req, err := hls.NewAuthRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	req.Header.Set("Referer", "https://www.withny.fun/")
 	req.Header.Set("Origin", "https://www.withny.fun")
 	resp, err := hls.Client.Do(req)
 	if err != nil {
+		hls.log.Err(err).Msg("failed to download fragment")
 		return err
 	}
 	defer resp.Body.Close()
@@ -303,7 +310,11 @@ func (hls *Downloader) download(
 		}
 
 		metrics.Downloads.Errors.Add(ctx, 1)
-		return fmt.Errorf("http error: %d", resp.StatusCode)
+		return fmt.Errorf(
+			"http error: url=%s, status=%d, method=GET",
+			url,
+			resp.StatusCode,
+		)
 	}
 
 	_, err = io.Copy(w, resp.Body)
@@ -356,9 +367,10 @@ func (hls *Downloader) Read(
 					hls.log.Info().Msg("skip fragment download because of context canceled")
 					continue // Continue to wait for fillQueue to finish
 				}
+				hls.log.Err(err).Msg("failed to download fragment")
 				span.RecordError(err)
 				if err == ErrHLSForbidden {
-					hls.log.Error().Err(err).Msg("stream was interrupted")
+					hls.log.Err(err).Msg("stream was interrupted")
 					cancel()
 					continue // Continue to wait for fillQueue to finish
 				}
@@ -388,7 +400,7 @@ func (hls *Downloader) Read(
 			} else if errors.Is(err, context.Canceled) {
 				hls.log.Info().Msg("hls downloader canceled")
 			} else {
-				hls.log.Error().Err(err).Msg("hls downloader exited with error")
+				hls.log.Err(err).Msg("hls downloader exited with error")
 			}
 
 			return err
@@ -414,6 +426,7 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 
 	resp, err := hls.Client.Do(req)
 	if err != nil {
+		hls.log.Err(err).Msg("failed to probe stream")
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -437,7 +450,11 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 				Str("response.body", string(body)).
 				Str("method", "GET").
 				Msg("http error")
-			return false, fmt.Errorf("http error: %d", resp.StatusCode)
+			return false, fmt.Errorf(
+				"http error: url=%s, status=%d, method=GET",
+				hls.url,
+				resp.StatusCode,
+			)
 		}
 	}
 
