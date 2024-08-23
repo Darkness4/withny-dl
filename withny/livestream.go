@@ -3,6 +3,7 @@ package withny
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"time"
 
@@ -126,7 +127,8 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	}
 	defer file.Close()
 
-	if err = downloader.Read(ctx, file); err != nil {
+	if err = downloader.Read(ctx, file); err != nil && !errors.Is(err, io.EOF) &&
+		!errors.Is(err, context.Canceled) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		log.Err(err).Msg("failed to download")
