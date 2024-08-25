@@ -155,6 +155,7 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 	q := u.Query()
 	q.Set("username", channelID)
 	u.RawQuery = q.Encode()
+
 	req, err := c.NewAuthRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -165,6 +166,12 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 		log.Err(err).Msg("failed to create request")
 		return GetUserResponse{}, err
 	}
+
+	log := log.With().
+		Str("method", "GET").
+		Stringer("url", u).
+		Str("channelID", channelID).
+		Logger()
 
 	res, err := c.Do(req)
 	if err != nil {
@@ -197,6 +204,7 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 	q := u.Query()
 	q.Set("username", channelID)
 	u.RawQuery = q.Encode()
+
 	req, err := c.NewAuthRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -207,6 +215,12 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 		log.Err(err).Msg("failed to create request")
 		return GetStreamsResponse{}, err
 	}
+
+	log := log.With().
+		Str("method", "GET").
+		Stringer("url", u).
+		Str("channelID", channelID).
+		Logger()
 
 	res, err := c.Do(req)
 	if err != nil {
@@ -253,6 +267,11 @@ func (c *Client) LoginWithRefreshToken(
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+
+	log := log.With().
+		Str("method", "POST").
+		Str("url", refreshURL).
+		Logger()
 
 	res, err := c.Do(req)
 	if err != nil {
@@ -305,6 +324,11 @@ func (c *Client) LoginWithUserPassword(
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	log := log.With().
+		Str("method", "POST").
+		Str("url", loginURL).
+		Logger()
+
 	res, err := c.Do(req)
 	if err != nil {
 		log.Err(err).Msg("failed to login")
@@ -347,6 +371,12 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 		log.Err(err).Msg("failed to create request")
 		return "", err
 	}
+
+	log := log.With().
+		Str("method", "GET").
+		Stringer("url", u).
+		Str("streamID", streamID).
+		Logger()
 
 	res, err := c.Do(req)
 	if err != nil {
@@ -395,6 +425,11 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 	)
 	req.Header.Set("Referer", "https://www.withny.fun/")
 	req.Header.Set("Origin", "https://www.withny.fun")
+
+	log := log.With().
+		Str("method", "GET").
+		Str("url", playbackURL).
+		Logger()
 
 	res, err := c.Do(req)
 	if err != nil {
