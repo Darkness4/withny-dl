@@ -103,7 +103,7 @@ func Do(ctx context.Context, output string, inputs []string, opts ...Option) err
 	}
 
 	if len(validInputs) == 0 {
-		log.Warn().Msg("no valid inputs")
+		log.Error().Msg("no valid inputs")
 		return nil
 	}
 
@@ -301,7 +301,14 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 			panic(err)
 		}
 		if !strings.HasPrefix(mtype.String(), "video/") &&
-			!strings.HasPrefix(mtype.String(), "audio/") {
+			!strings.HasPrefix(
+				mtype.String(),
+				"audio/",
+			) && mtype.String() != "application/octet-stream" {
+			log.Warn().
+				Str("file", input).
+				Stringer("mime", mtype).
+				Msg("file is not a valid video or audio file")
 			continue
 		}
 
