@@ -28,7 +28,7 @@ type NotifierConfig struct {
 	IncludeTitleInMessage      bool     `yaml:"includeTitleInMessage,omitempty"`
 	NoPriority                 bool     `yaml:"noPriority,omitempty"`
 	URLs                       []string `yaml:"urls,omitempty"`
-	notify.NotificationFormats `yaml:"notificationFormats,omitempty"`
+	notify.NotificationFormats `         yaml:"notificationFormats,omitempty"`
 }
 
 // RateLimitAvoidance is the configuration for the rate limit avoidance.
@@ -123,6 +123,8 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 					// Config sent successfully
 				case <-ctx.Done():
 					// The parent context was canceled, exit the loop
+					log.Err(ctx.Err()).
+						Msg("config reloader context canceled while the config was being sent")
 					return
 				}
 			}

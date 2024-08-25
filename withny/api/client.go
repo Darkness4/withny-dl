@@ -437,6 +437,7 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Err(ctx.Err()).Msg("context canceled, stopping login loop")
 			return ctx.Err()
 		case <-ticker.C:
 			if err := c.Login(ctx); err != nil {

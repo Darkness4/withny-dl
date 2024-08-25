@@ -81,6 +81,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
 			for {
 				select {
 				case <-ctx.Done():
+					w.log.Err(ctx.Err()).Msg("channel watcher context done")
 					return streams
 				case <-ticker.C:
 					if online, streams, err := w.IsOnline(ctx); err != nil {
