@@ -37,12 +37,15 @@ func (e GetPlaybackURLError) Error() string {
 	return fmt.Sprintf("unauthorized: %s", e.Err)
 }
 
+// ErrStreamNotFound is when no stream is found when looking for the playback URL.
 var ErrStreamNotFound = errors.New("stream not found")
 
+// UnauthorizedError is when the request is unauthorized.
 type UnauthorizedError struct {
 	Body string
 }
 
+// Error returns the error message.
 func (e UnauthorizedError) Error() string {
 	return fmt.Sprintf("unauthorized: %s", e.Body)
 }

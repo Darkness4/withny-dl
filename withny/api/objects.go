@@ -105,6 +105,7 @@ type Comment struct {
 	DeletedAt    *string     `json:"deletedAt"`
 }
 
+// ErrorResponse is the error response of the API.
 type ErrorResponse struct {
 	Message string      `json:"message"`
 	Status  json.Number `json:"status"`
