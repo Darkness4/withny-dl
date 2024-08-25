@@ -119,10 +119,21 @@ func Scan(
 				// Check if file is a video
 				if o.probe {
 					if isVideo, err := probe.ContainsVideoOrAudio(path); err != nil {
-						log.Err(err).Str("path", path).Msg("deletion skipped due to error")
-						span.RecordError(err)
-						span.SetStatus(codes.Error, err.Error())
-						return nil
+						if !strings.Contains(err.Error(), "Invalid data found when processing input") {
+							span.RecordError(err)
+							span.SetStatus(codes.Error, err.Error())
+							return nil
+						} else {
+							// File is corrupted, delete it.
+							log.Err(err).Str("path", path).Msg("file is corrupted, deleting...")
+							if !o.dryRun {
+								if err := os.Remove(path); err != nil {
+									log.Err(err).Str("path", path).Msg("failed to delete corrupted file")
+								}
+							}
+							return nil
+						}
+
 					} else if !isVideo {
 						return nil
 					}

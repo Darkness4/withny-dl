@@ -253,7 +253,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	}
 
 	if w.params.WriteThumbnail {
-		w.log.Info().Str("fnameThumb", fnameThumb).Msg("writing thunnail")
+		w.log.Info().Str("fnameThumb", fnameThumb).Msg("writing thumbnail")
 		func() {
 			url := meta.Stream.ThumbnailURL
 			resp, err := w.Get(url)
