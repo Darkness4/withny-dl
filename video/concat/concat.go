@@ -24,6 +24,7 @@ import (
 
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
 	"github.com/Darkness4/withny-dl/video/probe"
+	"github.com/gabriel-vasile/mimetype"
 	gopointer "github.com/mattn/go-pointer"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -295,6 +296,15 @@ func WithPrefix(ctx context.Context, remuxFormat string, prefix string, opts ...
 	validInputs := make([]string, 0, len(selected))
 	for _, input := range selected {
 		// Ignore files without video or audio
+		mtype, err := mimetype.DetectFile(input)
+		if err != nil {
+			panic(err)
+		}
+		if !strings.HasPrefix(mtype.String(), "video/") &&
+			!strings.HasPrefix(mtype.String(), "audio/") {
+			continue
+		}
+
 		if ok, err := probe.ContainsVideoOrAudio(input); err != nil {
 			log.Err(err).Str("file", input).Msg("file is not a valid video or audio file")
 			continue
