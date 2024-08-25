@@ -302,7 +302,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 
 					var getpburlErr api.GetPlaybackURLError
 					if errors.As(err, &getpburlErr) {
-						log.Error().Msg("failed to get playback URL, waiting for stream to end, backing off...")
+						log.Error().Msg("failed to get playback URL, retrying and backing off...")
 						err := try.DoExponentialBackoff(60, 1*time.Minute, 2, 60*time.Minute, func() error {
 							streams, err := client.GetStreams(ctx, channelID)
 							if err != nil {
@@ -314,6 +314,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 								); err != nil {
 									log.Err(err).Msg("notify failed")
 								}
+								log.Err(err).Msg("failed to get streams")
 								return err
 							}
 
@@ -330,6 +331,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 								); err != nil {
 									log.Err(err).Msg("notify failed")
 								}
+								log.Err(err).Msg("failed to get playback URL")
 								return err
 							}
 							return nil
