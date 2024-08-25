@@ -24,6 +24,7 @@ type LiveStream struct {
 	MetaData       api.MetaData
 	Params         *Params
 	OutputFileName string
+	PlaybackURL    string
 }
 
 // DownloadLiveStream downloads a withny live stream.
@@ -35,15 +36,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	defer span.End()
 
 	// Fetch playlist
-	playbackURL, err := client.GetStreamPlaybackURL(ctx, ls.MetaData.Stream.UUID)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		log.Err(err).Msg("failed to fetch playback URL")
-		return err
-	}
-
-	playlists, err := client.GetPlaylists(ctx, playbackURL)
+	playlists, err := client.GetPlaylists(ctx, ls.PlaybackURL)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

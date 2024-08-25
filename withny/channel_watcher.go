@@ -65,7 +65,7 @@ func NewChannelWatcher(client *api.Client, params *Params, channelID string) *Ch
 func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
 	w.log.Info().Any("params", w.params).Msg("watching channel")
 
-	online, streams, err := w.IsOnline(ctx)
+	online, stream, playbackURL, err := w.IsOnline(ctx)
 	if err != nil {
 		log.Err(err).Msg("failed to check if online")
 		return api.MetaData{}, err
@@ -75,19 +75,20 @@ func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
 		if !w.params.WaitForLive {
 			return api.MetaData{}, ErrLiveStreamNotOnline
 		}
-		streams = func() api.GetStreamsResponse {
+		stream, playbackURL = func() (stream api.GetStreamsResponseElement, playbackURL string) {
 			ticker := time.NewTicker(w.params.WaitPollInterval)
 			defer ticker.Stop()
 			for {
 				select {
 				case <-ctx.Done():
 					w.log.Err(ctx.Err()).Msg("channel watcher context done")
-					return streams
+					return api.GetStreamsResponseElement{}, ""
 				case <-ticker.C:
-					if online, streams, err := w.IsOnline(ctx); err != nil {
+					online, stream, playbackURL, err := w.IsOnline(ctx)
+					if err != nil {
 						log.Err(err).Msg("failed to check if online")
 					} else if online {
-						return streams
+						return stream, playbackURL
 					}
 				}
 			}
@@ -101,40 +102,68 @@ func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
 
 	meta := api.MetaData{
 		User:   getUserResp,
-		Stream: streams[0],
+		Stream: stream,
 	}
 
-	err = w.Process(ctx, meta)
+	err = w.Process(ctx, meta, playbackURL)
 	return meta, err
+}
+
+type isOnlineResponse = struct {
+	ok          bool
+	stream      api.GetStreamsResponseElement
+	playbackURL string
 }
 
 // IsOnline checks if the live stream is online.
 func (w *ChannelWatcher) IsOnline(
 	ctx context.Context,
-) (ok bool, streams api.GetStreamsResponse, err error) {
-	type resT = struct {
-		ok      bool
-		streams api.GetStreamsResponse
-	}
+) (ok bool, streams api.GetStreamsResponseElement, playbackURL string, err error) {
+
 	res, err := try.DoExponentialBackoffWithContextAndResult(
 		ctx,
-		5,
+		60,
 		30*time.Second,
 		2,
-		5*time.Minute,
-		func(ctx context.Context) (resT, error) {
+		60*time.Minute,
+		func(ctx context.Context) (isOnlineResponse, error) {
 			streams, err := w.GetStreams(ctx, w.channelID)
-			return resT{
-				ok:      len(streams) > 0,
-				streams: streams,
-			}, err
+			if err != nil {
+				if err := notifier.NotifyError(ctx, w.channelID, w.params.Labels, err); err != nil {
+					log.Err(err).Msg("notify failed")
+				}
+				return isOnlineResponse{}, err
+			}
+
+			if len(streams) == 0 {
+				return isOnlineResponse{
+					ok: false,
+				}, nil
+			}
+
+			playbackURL, err := w.GetStreamPlaybackURL(ctx, streams[0].UUID)
+			if err != nil {
+				if err := notifier.NotifyError(ctx, w.channelID, w.params.Labels, err); err != nil {
+					log.Err(err).Msg("notify failed")
+				}
+				return isOnlineResponse{
+					ok:     false,
+					stream: streams[0],
+				}, err
+			}
+
+			return isOnlineResponse{
+				ok:          true,
+				playbackURL: playbackURL,
+				stream:      streams[0],
+			}, nil
 		},
 	)
-	return res.ok, res.streams, err
+	return res.ok, res.stream, res.playbackURL, err
 }
 
 // Process runs the whole preparation, download and post-processing pipeline.
-func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
+func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbackURL string) error {
 	ctx, span := otel.Tracer(tracerName).
 		Start(ctx, "withny.Process", trace.WithAttributes(attribute.String("channelID", w.channelID),
 			attribute.Stringer("params", w.params),
@@ -311,6 +340,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 		MetaData:       meta,
 		Params:         w.params,
 		OutputFileName: fnameStream,
+		PlaybackURL:    playbackURL,
 	})
 	chatDownloadCancel()
 
