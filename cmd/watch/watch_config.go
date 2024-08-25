@@ -96,9 +96,11 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 		select {
 		case <-ctx.Done():
 			// The parent context was canceled, exit the loop
+			log.Err(ctx.Err()).Msg("watcher context canceled")
 			return
 		case _, ok := <-debouncedEvents:
 			if !ok {
+				log.Error().Msg("watcher channel closed")
 				return
 			}
 			stat, err := os.Stat(filename)
@@ -127,6 +129,7 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 
 		case err, ok := <-watcher.Errors:
 			if !ok {
+				log.Error().Msg("watcher error channel closed")
 				return
 			}
 			log.Error().Str("file", filename).Err(err).Msg("config reloader thrown an error")
