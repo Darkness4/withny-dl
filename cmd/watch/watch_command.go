@@ -300,15 +300,19 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 						log.Err(err).Msg("notify failed")
 					}
 
-					log.Error().Msg("retrying to login and backoff until success")
 					var authErr api.UnauthorizedError
 					if errors.As(err, &authErr) {
+						log.Error().Msg("stream is unauthorized, waiting for stream to end, backing off...")
 						err := try.DoExponentialBackoff(60, 1*time.Minute, 2, 60*time.Minute, func() error {
-							if err := client.Login(ctx); err != nil {
-								log.Fatal().Err(err).Msg("failed to login")
+							streams, err := client.GetStreams(ctx, channelID)
+							if err != nil {
+								return err
 							}
 
-							_, err := client.GetStreamPlaybackURL(ctx, authErr.StreamID)
+							if len(streams) == 0 {
+								return nil
+							}
+							_, err = client.GetStreamPlaybackURL(ctx, streams[0].UUID)
 							return err
 						})
 						if err != nil {

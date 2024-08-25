@@ -93,6 +93,8 @@ func Scan(
 	if err := filepath.WalkDir(scanDirectory, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Err(err).Str("path", path).Msg("failed to walk directory")
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 
@@ -104,6 +106,8 @@ func Scan(
 
 				finfo, err := d.Info()
 				if err != nil {
+					span.RecordError(err)
+					span.SetStatus(codes.Error, err.Error())
 					return err
 				}
 
@@ -116,6 +120,8 @@ func Scan(
 				if o.probe {
 					if isVideo, err := probe.ContainsVideoOrAudio(path); err != nil {
 						log.Err(err).Str("path", path).Msg("deletion skipped due to error")
+						span.RecordError(err)
+						span.SetStatus(codes.Error, err.Error())
 						return nil
 					} else if !isVideo {
 						return nil
@@ -126,6 +132,8 @@ func Scan(
 				entries, err := os.ReadDir(dir)
 				if err != nil {
 					log.Err(err).Str("dir", dir).Msg("failed to read directory")
+					span.RecordError(err)
+					span.SetStatus(codes.Error, err.Error())
 					return err
 				}
 

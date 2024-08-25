@@ -27,9 +27,7 @@ const (
 
 // UnauthorizedError is an error for unauthorized requests.
 type UnauthorizedError struct {
-	Err error
-
-	// StreamID is stored to retry the request.
+	Err      error
 	StreamID string
 }
 
@@ -358,13 +356,13 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
 		if res.StatusCode == http.StatusUnauthorized {
 			return "", UnauthorizedError{
-				Err:      fmt.Errorf("unauthorized"),
+				Err:      fmt.Errorf("unauthorized: %s", string(body)),
 				StreamID: streamID,
 			}
 		}
-		body, _ := io.ReadAll(res.Body)
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
