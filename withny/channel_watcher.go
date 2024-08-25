@@ -314,10 +314,10 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData) error {
 	})
 	chatDownloadCancel()
 
-	if errors.Is(dlErr, api.UnauthorizedError{}) {
+	if errors.Is(dlErr, api.GetPlaybackURLError{}) {
 		span.RecordError(dlErr)
 		span.SetStatus(codes.Error, dlErr.Error())
-		w.log.Err(dlErr).Msg("unauthorized")
+		w.log.Err(dlErr).Msg("get playback url failed")
 		return dlErr
 	}
 

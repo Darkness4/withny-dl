@@ -104,3 +104,8 @@ type Comment struct {
 	UpdatedAt    *string     `json:"updatedAt"`
 	DeletedAt    *string     `json:"deletedAt"`
 }
+
+type ErrorResponse struct {
+	Message string      `json:"message"`
+	Status  json.Number `json:"status"`
+}

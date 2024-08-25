@@ -300,12 +300,20 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 						log.Err(err).Msg("notify failed")
 					}
 
-					var authErr api.UnauthorizedError
-					if errors.As(err, &authErr) {
-						log.Error().Msg("stream is unauthorized, waiting for stream to end, backing off...")
+					var getpburlErr api.GetPlaybackURLError
+					if errors.As(err, &getpburlErr) {
+						log.Error().Msg("failed to get playback URL, waiting for stream to end, backing off...")
 						err := try.DoExponentialBackoff(60, 1*time.Minute, 2, 60*time.Minute, func() error {
 							streams, err := client.GetStreams(ctx, channelID)
 							if err != nil {
+								if err := notifier.NotifyError(
+									context.Background(),
+									channelID,
+									params.Labels,
+									err,
+								); err != nil {
+									log.Err(err).Msg("notify failed")
+								}
 								return err
 							}
 
@@ -313,7 +321,18 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 								return nil
 							}
 							_, err = client.GetStreamPlaybackURL(ctx, streams[0].UUID)
-							return err
+							if err != nil {
+								if err := notifier.NotifyError(
+									context.Background(),
+									channelID,
+									params.Labels,
+									err,
+								); err != nil {
+									log.Err(err).Msg("notify failed")
+								}
+								return err
+							}
+							return nil
 						})
 						if err != nil {
 							log.Err(err).Msg("failed to login and fetch playback URL")

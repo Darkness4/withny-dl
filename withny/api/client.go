@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,15 +26,25 @@ const (
 	streamPlaybackURL = streamsURL + "/%s/playback-url"
 )
 
-// UnauthorizedError is an error for unauthorized requests.
-type UnauthorizedError struct {
+// GetPlaybackURLError is an error given by the GetStreamPlaybackURL API.
+type GetPlaybackURLError struct {
 	Err      error
 	StreamID string
 }
 
 // Error returns the error message.
-func (e UnauthorizedError) Error() string {
+func (e GetPlaybackURLError) Error() string {
 	return fmt.Sprintf("unauthorized: %s", e.Err)
+}
+
+var ErrStreamNotFound = errors.New("stream not found")
+
+type UnauthorizedError struct {
+	Body string
+}
+
+func (e UnauthorizedError) Error() string {
+	return fmt.Sprintf("unauthorized: %s", e.Body)
 }
 
 // Claims is the JWT claims for the withny API.
@@ -388,9 +399,19 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
 		if res.StatusCode == http.StatusUnauthorized {
-			return "", UnauthorizedError{
-				Err:      fmt.Errorf("unauthorized: %s", string(body)),
+			return "", GetPlaybackURLError{
+				Err:      UnauthorizedError{Body: string(body)},
 				StreamID: streamID,
+			}
+		} else if res.StatusCode == http.StatusInternalServerError {
+			var errMsg ErrorResponse
+			_ = json.Unmarshal(body, &errMsg)
+			if errMsg.Message == "Stream not found" {
+				// Is a json message.
+				return "", GetPlaybackURLError{
+					Err:      ErrStreamNotFound,
+					StreamID: streamID,
+				}
 			}
 		}
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
@@ -402,8 +423,14 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	}
 
 	var parsed string
-	err = json.NewDecoder(res.Body).Decode(&parsed)
-	return parsed, err
+	if err = json.NewDecoder(res.Body).Decode(&parsed); err != nil {
+		log.Err(err).Msg("failed to decode response")
+		return "", GetPlaybackURLError{
+			Err:      err,
+			StreamID: streamID,
+		}
+	}
+	return parsed, nil
 }
 
 // GetPlaylists will fetch the playlists from the given playbackURL.
