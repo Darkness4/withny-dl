@@ -55,12 +55,13 @@ func (suite *ChannelWatcherIntegrationTestSuite) TestWatch() {
 
 func (suite *ChannelWatcherIntegrationTestSuite) TestIsOnline() {
 	// Act
-	ok, streams, err := suite.impl.IsOnline(context.Background())
+	ok, stream, playbackURL, err := suite.impl.IsOnline(context.Background())
 
 	// Assert
 	suite.Require().NoError(err)
 	suite.Require().Equal(true, ok)
-	suite.Require().NotEmpty(streams)
+	suite.Require().NotEmpty(stream)
+	suite.Require().NotEmpty(playbackURL)
 }
 
 func TestChannelWatcherIntegrationTestSuite(t *testing.T) {
