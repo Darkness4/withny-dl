@@ -237,7 +237,7 @@ notifier:
     ##   - Labels
     error:
       enabled: true
-      # title: 'stream download of {{ .ChannelID }} failed'
+      # title: 'watcher of {{ .ChannelID }} thrown an error'
       # message: '{{ .Error }}'
       # priority: 10
 

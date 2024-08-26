@@ -100,7 +100,7 @@ var DefaultNotificationFormats = NotificationFormats{
 	},
 	Error: NotificationFormat{
 		Enabled:  ptr.Ref(true),
-		Title:    "stream download of {{ .ChannelID }} failed",
+		Title:    "watcher of {{ .ChannelID }} thrown an error",
 		Message:  "{{ .Error }}",
 		Priority: 10,
 	},
