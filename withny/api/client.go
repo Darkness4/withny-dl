@@ -34,7 +34,7 @@ type GetPlaybackURLError struct {
 
 // Error returns the error message.
 func (e GetPlaybackURLError) Error() string {
-	return fmt.Sprintf("unauthorized: %s", e.Err)
+	return e.Err.Error()
 }
 
 // ErrStreamNotFound is when no stream is found when looking for the playback URL.

@@ -129,12 +129,8 @@ func (w *ChannelWatcher) IsOnline(
 		func(ctx context.Context) (isOnlineResponse, error) {
 			streams, err := w.GetStreams(ctx, w.channelID)
 			if err != nil {
-				if err := notifier.NotifyError(ctx, w.channelID, w.params.Labels, err); err != nil {
-					log.Err(err).Msg("notify failed")
-				}
 				return isOnlineResponse{}, err
 			}
-
 			if len(streams) == 0 {
 				return isOnlineResponse{
 					ok: false,
@@ -159,6 +155,12 @@ func (w *ChannelWatcher) IsOnline(
 			}, nil
 		},
 	)
+	if err != nil {
+		if err := notifier.NotifyError(ctx, w.channelID, w.params.Labels, err); err != nil {
+			log.Err(err).Msg("notify failed")
+		}
+		return false, api.GetStreamsResponseElement{}, "", err
+	}
 	return res.ok, res.stream, res.playbackURL, err
 }
 
