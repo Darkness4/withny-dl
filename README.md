@@ -29,6 +29,9 @@ Automatically download withny livestream. Written in Go.
 ## Features
 
 - Download withny live streams automatically via polling.
+- Save live chat into a JSON file.
+- Save stream information into a JSON file.
+- Download thumbnails.
 - Remux the stream into an MP4 file.
 - Extract audio from the stream.
 - Concatenate and remux with previous recordings after it is finished (in case of crashes).
@@ -75,17 +78,17 @@ Prebuilt binaries using FFmpeg static libraries are [available](https://github.c
 
 **Linux**
 
-Static binaries are generated using the [Dockerfile.static-base](Dockerfile.static-base) and [Dockerfile.static](Dockerfile.static) files.
+Static binaries are generated using the [Dockerfile.static-base](https://github.com/Darkness4/fc2-live-dl-go/blob/main/Dockerfile.static-base) and [Dockerfile.static](Dockerfile.static) files.
 
-You can customize FFmpeg by editing [Dockerfile.static-base](Dockerfile.static-base).
+You can customize FFmpeg by editing [Dockerfile.static-base](https://github.com/Darkness4/fc2-live-dl-go/blob/main/Dockerfile.static-base).
 
 The build system is Portage.
 
 **Darwin**
 
-Partial static binaries are generated using the [Dockerfile.darwin-base](Dockerfile.darwin-base) and [Dockerfile.darwin](Dockerfile.darwin) files.
+Partial static binaries are generated using the [Dockerfile.darwin-base](https://github.com/Darkness4/fc2-live-dl-go/blob/main/Dockerfile.darwin-base) and [Dockerfile.darwin](Dockerfile.darwin) files.
 
-You can customize FFmpeg by editing [Dockerfile.darwin-base](Dockerfile.darwin-base).
+You can customize FFmpeg by editing [Dockerfile.darwin-base](https://github.com/Darkness4/fc2-live-dl-go/blob/main/Dockerfile.darwin-base).
 
 Do note that the Darwin binaries are also linked to `libSystem`, which adds a requirement on the OS version.
 
@@ -103,9 +106,9 @@ The build system is OSXCross.
 > While static binaries are available, they are not tested. **Using Docker/Podman machine is heavily recommended**.
 > You have been warned!
 
-Static binaries are generated using the file [Dockerfile.windows-base](Dockerfile.static-windows-base) and [Dockerfile.windows](Dockerfile.static-windows).
+Static binaries are generated using the file [Dockerfile.windows-base](https://github.com/Darkness4/fc2-live-dl-go/blob/main/Dockerfile.static-windows-base) and [Dockerfile.windows](Dockerfile.static-windows).
 
-You can customize FFmpeg by editing [Dockerfile.windows-base](Dockerfile.static-windows-base).
+You can customize FFmpeg by editing [Dockerfile.windows-base](https://github.com/Darkness4/fc2-live-dl-go/blob/main/Dockerfile.static-windows-base).
 
 The build system is MXE.
 

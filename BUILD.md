@@ -1,6 +1,6 @@
 # Build from source
 
-> ![WARNING]
+> [!WARNING]
 >
 > Other build methods like native builds are no more supported. Prefer using Podman (or Docker) for a better experience.
 > You can still set up a development environment by simply installing Go, but won't be able to compile on Windows or MacOS due to the dependencies on ffmpeg.
