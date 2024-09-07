@@ -127,31 +127,31 @@ func (w *ChannelWatcher) IsOnline(
 		2,
 		60*time.Minute,
 		func(ctx context.Context) (isOnlineResponse, error) {
-			streams, err := w.GetStreams(ctx, w.channelID)
+			res, err := w.GetStreams(ctx, w.channelID)
 			if err != nil {
 				return isOnlineResponse{}, err
 			}
-			if len(streams) == 0 {
+			if res.Count == 0 {
 				return isOnlineResponse{
 					ok: false,
 				}, nil
 			}
 
-			playbackURL, err := w.GetStreamPlaybackURL(ctx, streams[0].UUID)
+			playbackURL, err := w.GetStreamPlaybackURL(ctx, res.Streams[0].UUID)
 			if err != nil {
 				if err := notifier.NotifyError(ctx, w.channelID, w.params.Labels, err); err != nil {
 					log.Err(err).Msg("notify failed")
 				}
 				return isOnlineResponse{
 					ok:     false,
-					stream: streams[0],
+					stream: res.Streams[0],
 				}, err
 			}
 
 			return isOnlineResponse{
 				ok:          true,
 				playbackURL: playbackURL,
-				stream:      streams[0],
+				stream:      res.Streams[0],
 			}, nil
 		},
 	)

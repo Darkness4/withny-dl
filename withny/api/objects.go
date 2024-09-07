@@ -33,7 +33,10 @@ type GetUserResponse struct {
 }
 
 // GetStreamsResponse is the response of the get streams request.
-type GetStreamsResponse []GetStreamsResponseElement
+type GetStreamsResponse struct {
+	Count   int64                       `json:"count"`
+	Streams []GetStreamsResponseElement `json:"streams"`
+}
 
 // GetStreamsResponseElement is the element of the get streams response.
 type GetStreamsResponseElement struct {

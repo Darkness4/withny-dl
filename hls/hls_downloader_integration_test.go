@@ -39,9 +39,9 @@ func (suite *DownloaderIntegrationTestSuite) fetchPlaylist(
 	// Act
 	streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
 	suite.Require().NoError(err)
-	suite.Require().Greater(len(streams), 0)
+	suite.Require().Greater(len(streams.Streams), 0)
 
-	playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
+	playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams.Streams[0].UUID)
 	suite.Require().NoError(err)
 
 	playlists, err := client.GetPlaylists(context.Background(), playbackURL)
