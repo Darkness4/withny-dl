@@ -422,6 +422,7 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 		log.Err(err).Msg("failed to create request")
 		return "", err
 	}
+	req.Header.Set("Accept", "application/json")
 
 	log := log.With().
 		Str("method", "GET").
@@ -459,6 +460,9 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
+		if res.StatusCode >= http.StatusInternalServerError {
+			return "", ServerError{Status: res.StatusCode, Body: string(body)}
+		}
 		return "", err
 	}
 
@@ -510,6 +514,12 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
+		if res.StatusCode >= http.StatusInternalServerError {
+			return nil, ServerError{
+				Status: res.StatusCode,
+				Body:   string(body),
+			}
+		}
 		return nil, err
 	}
 

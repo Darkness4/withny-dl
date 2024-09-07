@@ -29,6 +29,7 @@ type LiveStream struct {
 
 // DownloadLiveStream downloads a withny live stream.
 func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) error {
+	log := log.Ctx(ctx)
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "withny.downloadStream", trace.WithAttributes(
 		attribute.String("channel_id", ls.MetaData.User.Username),
 		attribute.String("fname", ls.OutputFileName),
@@ -66,7 +67,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 
 		downloader = hls.NewDownloader(
 			client,
-			&log.Logger,
+			log,
 			ls.Params.PacketLossMax,
 			playlist.URL,
 		)
