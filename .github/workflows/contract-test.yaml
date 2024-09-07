@@ -44,4 +44,7 @@ jobs:
           go mod download
 
       - name: test
+        env:
+          WITHNY_USERNAME: ${{ secrets.WITHNY_USERNAME }}
+          WITHNY_PASSWORD: ${{ secrets.WITHNY_PASSWORD }}
         run: go test -v -tags=contract -timeout=30s github.com/Darkness4/withny-dl/withny/api
