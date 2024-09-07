@@ -27,11 +27,13 @@ const (
 	streamPlaybackURL = streamsURL + "/%s/playback-url"
 )
 
+// ServerError is an error given by the withny server.
 type ServerError struct {
 	Err    error
 	Status int
 }
 
+// Error returns the error message.
 func (e ServerError) Error() string {
 	return fmt.Sprintf("server error: %s", e.Err)
 }
