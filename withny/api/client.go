@@ -472,21 +472,10 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 
 // GetPlaylists will fetch the playlists from the given playbackURL.
 func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playlist, error) {
-	// No need for auth request. Token is included in the playback URL.
-	url, err := url.Parse(playbackURL)
-	if err != nil {
-		log.Err(err).Msg("failed to parse playback URL")
-		panic(err)
-	}
-	q := url.Query()
-	q.Set("supported_codecs", "av1,h264")
-
-	url.RawQuery = q.Encode()
-
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		url.String(),
+		playbackURL,
 		nil,
 	)
 	if err != nil {
@@ -502,7 +491,7 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 
 	log := log.With().
 		Str("method", "GET").
-		Str("url", url.String()).
+		Str("url", playbackURL).
 		Logger()
 
 	res, err := c.Do(req)
