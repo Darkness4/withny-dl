@@ -218,13 +218,12 @@ func (w *ChannelWatcher) HasNewStream(
 	ctx context.Context,
 ) (res HasNewStreamResponse, err error) {
 	log := log.Ctx(ctx)
-	res, err = try.DoExponentialBackoffWithContextAndResult(
-		ctx,
+	res, err = try.DoExponentialBackoffWithResult(
 		60,
 		30*time.Second,
 		2,
 		60*time.Minute,
-		func(ctx context.Context) (HasNewStreamResponse, error) {
+		func() (HasNewStreamResponse, error) {
 			streams, err := w.GetStreams(ctx, w.filterChannelID)
 			if err != nil {
 				if !errors.Is(err, api.ServerError{}) {
@@ -241,59 +240,54 @@ func (w *ChannelWatcher) HasNewStream(
 			}
 
 			// Find a stream that is online and not being processed.
-			w.processingStreamsLock.Lock()
-			stream, ok := func() (stream api.GetStreamsResponseElement, ok bool) {
-				defer w.processingStreamsLock.Unlock()
-				for _, s := range streams {
-					if _, ok := w.processingStreams[s.UUID]; ok {
-						// Stream is being processed.
-						continue
-					}
-					return s, true
+			var getUserResp api.GetUserResponse
+			var playbackURL string
+			var stream api.GetStreamsResponseElement
+			var lastErr error
+			for _, s := range streams {
+				w.processingStreamsLock.Lock()
+				if _, ok := w.processingStreams[s.UUID]; ok {
+					// Stream is being processed.
+					continue
 				}
-				// All streams are being processed. We can consider the channel "offline".
-				return api.GetStreamsResponseElement{}, false
-			}()
-			if !ok {
-				return HasNewStreamResponse{
-					HasNewStream: false,
-				}, nil
-			}
+				w.processingStreamsLock.Unlock()
 
-			channelID := stream.Cast.AgencySecret.ChannelName
+				// Stream is not being processed, check if it is online.
 
-			log.Info().Str("channelID", channelID).Str("stream", stream.Title).Msg("streams found")
+				channelID := s.Cast.AgencySecret.ChannelName
+				log.Info().Str("channelID", channelID).Str("stream", s.Title).Msg("streams found")
+				getUserResp, lastErr = w.Client.GetUser(ctx, channelID)
+				if lastErr != nil {
+					if !errors.Is(lastErr, api.ServerError{}) {
+						if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
+							log.Err(err).Msg("notify failed")
+						}
+					}
+					continue
+				}
 
-			getUserResp, err := w.Client.GetUser(ctx, channelID)
-			if err != nil {
-				if !errors.Is(err, api.ServerError{}) {
-					if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
+				playbackURL, lastErr = w.GetStreamPlaybackURL(ctx, s.UUID)
+				if lastErr != nil {
+					if err := notifier.NotifyError(ctx, channelID, w.params.Labels, err); err != nil {
 						log.Err(err).Msg("notify failed")
 					}
+					continue
 				}
-				return HasNewStreamResponse{
-					HasNewStream: false,
-					Stream:       streams[0],
-				}, err
+
+				stream = s
 			}
 
-			playbackURL, err := w.GetStreamPlaybackURL(ctx, streams[0].UUID)
-			if err != nil {
-				if err := notifier.NotifyError(ctx, channelID, w.params.Labels, err); err != nil {
-					log.Err(err).Msg("notify failed")
-				}
+			if playbackURL == "" {
 				return HasNewStreamResponse{
 					HasNewStream: false,
-					User:         getUserResp,
-					Stream:       streams[0],
-				}, err
+				}, lastErr
 			}
 
 			return HasNewStreamResponse{
 				HasNewStream: true,
 				PlaybackURL:  playbackURL,
 				User:         getUserResp,
-				Stream:       streams[0],
+				Stream:       stream,
 			}, nil
 		},
 	)
@@ -301,7 +295,6 @@ func (w *ChannelWatcher) HasNewStream(
 		if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
 			log.Err(err).Msg("notify failed")
 		}
-		return res, err
 	}
 	return res, err
 }
