@@ -1,4 +1,4 @@
-//go:build integration
+//go:build contract
 
 package api_test
 
