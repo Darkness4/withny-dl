@@ -70,6 +70,20 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 	ctx = log.WithContext(ctx)
 
 	for {
+		// Only handle IDLE state for a channelID not empty.
+		// This is because an empty channelID means multiple channels are being watched.
+		// Therefore, it is impossible to predict the true channelID that will be used.
+		if w.filterChannelID != "" {
+			state.DefaultState.SetChannelState(
+				w.filterChannelID,
+				state.DownloadStateIdle,
+				state.WithLabels(w.params.Labels),
+			)
+			if err := notifier.NotifyIdle(ctx, w.filterChannelID, w.params.Labels); err != nil {
+				log.Err(err).Msg("notify failed")
+			}
+		}
+
 		res, err := w.HasNewStream(ctx)
 		if err != nil {
 			log.Err(err).Msg("failed to check if online")

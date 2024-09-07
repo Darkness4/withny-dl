@@ -250,21 +250,6 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 
 		go func(channelID string, params *withny.Params) {
 			defer wg.Done()
-			// Only handle IDLE state for a channelID not empty.
-			// This is because an empty channelID means multiple channels are being watched.
-			// Therefore, it is impossible to predict the true channelID that will be used.
-			if channelID != "" {
-				log := log.With().Str("channelID", channelID).Logger()
-				state.DefaultState.SetChannelState(
-					channelID,
-					state.DownloadStateIdle,
-					state.WithLabels(params.Labels),
-				)
-				if err := notifier.NotifyIdle(ctx, channelID, params.Labels); err != nil {
-					log.Err(err).Msg("notify failed")
-				}
-			}
-
 			withny.NewChannelWatcher(client, params, channelID).Watch(ctx)
 		}(channel, channelParams)
 
