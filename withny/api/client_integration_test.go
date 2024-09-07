@@ -4,7 +4,6 @@ package api_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"testing"
@@ -174,12 +173,10 @@ func TestClient(t *testing.T) {
 		streams, err := client.GetStreams(context.Background(), findAnyLiveStream(t, client))
 		require.NoError(t, err)
 		require.Greater(t, len(streams), 0)
-		fmt.Println(streams[0].UUID)
 
 		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
 		require.NoError(t, err)
 
-		fmt.Println(playbackURL)
 		playlists, err := client.GetPlaylists(context.Background(), playbackURL)
 
 		// Assert
