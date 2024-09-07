@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Darkness4/withny-dl/notify/notifier"
+	"github.com/Darkness4/withny-dl/utils"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -205,7 +206,7 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 	}
 
 	var parsed GetUserResponse
-	err = json.NewDecoder(res.Body).Decode(&parsed)
+	err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed)
 	return parsed, err
 }
 
@@ -254,7 +255,7 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 	}
 
 	var parsed GetStreamsResponse
-	err = json.NewDecoder(res.Body).Decode(&parsed)
+	err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed)
 	return parsed, err
 }
 
@@ -305,8 +306,7 @@ func (c *Client) LoginWithRefreshToken(
 	}
 
 	var lr Credentials
-	if err := json.NewDecoder(res.Body).Decode(&lr.LoginResponse); err != nil {
-		log.Err(err).Msg("failed to decode response")
+	if err := utils.JSONDecodeAndPrintOnError(res.Body, &lr.LoginResponse); err != nil {
 		return lr, err
 	}
 	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
@@ -361,8 +361,7 @@ func (c *Client) LoginWithUserPassword(
 	}
 
 	var lr Credentials
-	if err := json.NewDecoder(res.Body).Decode(&lr.LoginResponse); err != nil {
-		log.Err(err).Msg("failed to decode response")
+	if err := utils.JSONDecodeAndPrintOnError(res.Body, &lr.LoginResponse); err != nil {
 		return lr, err
 	}
 	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
@@ -426,8 +425,7 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	}
 
 	var parsed string
-	if err = json.NewDecoder(res.Body).Decode(&parsed); err != nil {
-		log.Err(err).Msg("failed to decode response")
+	if err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed); err != nil {
 		return "", GetPlaybackURLError{
 			Err:      err,
 			StreamID: streamID,
