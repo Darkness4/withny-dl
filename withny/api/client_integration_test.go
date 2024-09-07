@@ -137,8 +137,7 @@ func TestClient(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotEmpty(t, streams)
-		require.Greater(t, streams.Count, int64(0))
-		require.Greater(t, len(streams.Streams), 0)
+		require.Greater(t, len(streams), 0)
 	})
 
 	t.Run("Get stream playback URL", func(t *testing.T) {
@@ -148,13 +147,9 @@ func TestClient(t *testing.T) {
 		// Act
 		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
 		require.NoError(t, err)
-		require.Greater(t, streams.Count, int64(0))
-		require.Greater(t, len(streams.Streams), 0)
+		require.Greater(t, len(streams), 0)
 
-		playbackURL, err := client.GetStreamPlaybackURL(
-			context.Background(),
-			streams.Streams[0].UUID,
-		)
+		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
 
 		// Assert
 		require.NoError(t, err)
@@ -168,13 +163,9 @@ func TestClient(t *testing.T) {
 		// Act
 		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
 		require.NoError(t, err)
-		require.Greater(t, streams.Count, int64(0))
-		require.Greater(t, len(streams.Streams), 0)
+		require.Greater(t, len(streams), 0)
 
-		playbackURL, err := client.GetStreamPlaybackURL(
-			context.Background(),
-			streams.Streams[0].UUID,
-		)
+		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
 		require.NoError(t, err)
 
 		fmt.Println(playbackURL)
