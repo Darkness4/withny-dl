@@ -4,6 +4,8 @@
 package try
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"time"
@@ -71,6 +73,8 @@ func DoExponentialBackoff(
 }
 
 // DoWithResult tries a function and returns a result.
+//
+// To avoid any deadlock, the function will stop if the errors is context.Canceled.
 func DoWithResult[T any](
 	tries int,
 	delay time.Duration,
@@ -84,6 +88,9 @@ func DoWithResult[T any](
 		if err == nil {
 			return result, nil
 		}
+		if errors.Is(err, context.Canceled) {
+			return result, err
+		}
 		log.Warn().Str("parentCaller", getCaller()).Int("try", try).Err(err).Msg("try failed")
 		time.Sleep(delay)
 	}
@@ -92,6 +99,8 @@ func DoWithResult[T any](
 }
 
 // DoExponentialBackoffWithResult performs an exponential backoff and return a result.
+//
+// To avoid any deadlock, the function will stop if the errors is context.Canceled.
 func DoExponentialBackoffWithResult[T any](
 	tries int,
 	delay time.Duration,
@@ -106,6 +115,9 @@ func DoExponentialBackoffWithResult[T any](
 		result, err = fn()
 		if err == nil {
 			return result, nil
+		}
+		if errors.Is(err, context.Canceled) {
+			return result, err
 		}
 		log.Warn().
 			Str("parentCaller", getCaller()).
