@@ -1,4 +1,4 @@
-//go:build integration
+//go:build contract
 
 package api_test
 
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
-	"os"
 	"testing"
 	"time"
 
@@ -22,6 +21,17 @@ func init() {
 	log.Logger = log.Logger.With().Caller().Logger()
 	_ = godotenv.Load(".env")
 	_ = godotenv.Load(".env.test")
+}
+
+func findAnyLiveStream(t *testing.T, client *api.Client) (username string) {
+	streams, err := client.GetStreams(context.Background(), "")
+	require.NoError(t, err)
+
+	if len(streams) == 0 {
+		t.Skip("No live streams found")
+	}
+
+	return streams[0].Cast.AgencySecret.ChannelName
 }
 
 func TestClient(t *testing.T) {
@@ -128,7 +138,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("Get streams", func(t *testing.T) {
 		// Act
-		username := os.Getenv("WITHNY_STREAM_USERNAME")
+		username := findAnyLiveStream(t, client)
 		err := client.Login(context.Background())
 		require.NoError(t, err)
 
@@ -145,7 +155,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
+		streams, err := client.GetStreams(context.Background(), findAnyLiveStream(t, client))
 		require.NoError(t, err)
 		require.Greater(t, len(streams), 0)
 
@@ -161,7 +171,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
+		streams, err := client.GetStreams(context.Background(), findAnyLiveStream(t, client))
 		require.NoError(t, err)
 		require.Greater(t, len(streams), 0)
 		fmt.Println(streams[0].UUID)

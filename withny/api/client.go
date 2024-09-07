@@ -234,9 +234,11 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 	if err != nil {
 		panic(err)
 	}
-	q := u.Query()
-	q.Set("username", channelID)
-	u.RawQuery = q.Encode()
+	if channelID != "" {
+		q := u.Query()
+		q.Set("username", channelID)
+		u.RawQuery = q.Encode()
+	}
 
 	req, err := c.NewAuthRequestWithContext(
 		ctx,
