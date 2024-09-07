@@ -6,7 +6,6 @@ import (
 
 	"github.com/Darkness4/withny-dl/cmd/clean"
 	"github.com/Darkness4/withny-dl/cmd/concat"
-	"github.com/Darkness4/withny-dl/cmd/download"
 	"github.com/Darkness4/withny-dl/cmd/logintest"
 	"github.com/Darkness4/withny-dl/cmd/remux"
 	"github.com/Darkness4/withny-dl/cmd/watch"
@@ -24,7 +23,6 @@ func init() {
 
 var app = &cli.App{
 	Name:    "withny-dl",
-	Usage:   "withny download.",
 	Version: version,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -67,7 +65,6 @@ var app = &cli.App{
 		},
 	},
 	Commands: []*cli.Command{
-		download.Command,
 		watch.Command,
 		remux.Command,
 		concat.Command,

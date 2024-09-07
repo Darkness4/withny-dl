@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Darkness4/withny-dl/notify/notifier"
@@ -44,6 +45,9 @@ type ChannelWatcher struct {
 	params *Params
 	// filterChannelID is like a channelID, but an empty one will select all channels.
 	filterChannelID string
+	// processingStreams is a set of streamsIDs that are currently being processed.
+	processingStreams     map[string]struct{}
+	processingStreamsLock sync.Mutex
 }
 
 // NewChannelWatcher creates a new withny channel watcher.
@@ -52,82 +56,160 @@ func NewChannelWatcher(client *api.Client, params *Params, channelID string) *Ch
 		log.Panic().Msg("client is nil")
 	}
 	return &ChannelWatcher{
-		Client:          client,
-		params:          params,
-		filterChannelID: channelID,
+		Client:            client,
+		params:            params,
+		filterChannelID:   channelID,
+		processingStreams: make(map[string]struct{}),
 	}
 }
 
 // Watch watches the channel for any new live stream.
-func (w *ChannelWatcher) Watch(ctx context.Context) (api.MetaData, error) {
+func (w *ChannelWatcher) Watch(ctx context.Context) {
 	log := log.With().Str("filterChannelID", w.filterChannelID).Logger()
 	log.Info().Any("params", w.params).Msg("watching channel")
 	ctx = log.WithContext(ctx)
 
-	online, stream, playbackURL, err := w.IsOnline(ctx)
-	if err != nil {
-		log.Err(err).Msg("failed to check if online")
-		return api.MetaData{}, err
-	}
-
-	if !online {
-		if !w.params.WaitForLive {
-			return api.MetaData{}, ErrLiveStreamNotOnline
+	for {
+		res, err := w.HasNewStream(ctx)
+		if err != nil {
+			log.Err(err).Msg("failed to check if online")
 		}
-		stream, playbackURL = func() (stream api.GetStreamsResponseElement, playbackURL string) {
-			ticker := time.NewTicker(w.params.WaitPollInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					log.Err(ctx.Err()).Msg("channel watcher context done")
-					return api.GetStreamsResponseElement{}, ""
-				case <-ticker.C:
-					online, stream, playbackURL, err := w.IsOnline(ctx)
-					if err != nil {
-						log.Err(err).Msg("failed to check if online")
-					} else if online {
-						return stream, playbackURL
+
+		if !res.HasNewStream {
+			res = func() HasNewStreamResponse {
+				ticker := time.NewTicker(w.params.WaitPollInterval)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ctx.Done():
+						log.Err(ctx.Err()).Msg("channel watcher context done")
+						return HasNewStreamResponse{}
+					case <-ticker.C:
+						res, err := w.HasNewStream(ctx)
+						if err != nil {
+							log.Err(err).Msg("failed to check if online")
+							if errors.Is(err, context.Canceled) {
+								return HasNewStreamResponse{}
+							}
+						} else if res.HasNewStream {
+							return res
+						}
 					}
+				}
+			}()
+
+			if !res.HasNewStream {
+				// Context has been canceled.
+				log.Warn().Msg("channel watcher context canceled, waiting for processing to finish")
+				w.waitProcessingOrFatal(5 * time.Minute)
+				log.Warn().Msg("processing finished")
+				return
+			}
+		}
+
+		w.processingStreamsLock.Lock()
+		w.processingStreams[res.Stream.UUID] = struct{}{}
+		w.processingStreamsLock.Unlock()
+
+		go func() {
+			defer func() {
+				w.processingStreamsLock.Lock()
+				delete(w.processingStreams, res.Stream.UUID)
+				w.processingStreamsLock.Unlock()
+			}()
+			log := log.With().Str("channelID", res.User.Username).Logger()
+			ctx = log.WithContext(ctx)
+
+			err := w.Process(ctx, api.MetaData{
+				User:   res.User,
+				Stream: res.Stream,
+			}, res.PlaybackURL)
+
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					state.DefaultState.SetChannelState(
+						res.User.Username,
+						state.DownloadStateCanceled,
+						state.WithLabels(w.params.Labels),
+					)
+					if err := notifier.NotifyCanceled(
+						context.Background(),
+						res.User.Username,
+						w.params.Labels,
+					); err != nil {
+						log.Err(err).Msg("notify failed")
+					}
+				} else {
+					state.DefaultState.SetChannelError(res.User.Username, err)
+					if err := notifier.NotifyError(
+						context.Background(),
+						res.User.Username,
+						w.params.Labels,
+						err,
+					); err != nil {
+						log.Err(err).Msg("notify failed")
+					}
+				}
+			} else {
+				state.DefaultState.SetChannelState(
+					res.User.Username,
+					state.DownloadStateFinished,
+					state.WithLabels(w.params.Labels),
+				)
+				if err := notifier.NotifyFinished(ctx, res.User.Username, w.params.Labels, api.MetaData{
+					User:   res.User,
+					Stream: res.Stream,
+				}); err != nil {
+					log.Err(err).Msg("notify failed")
 				}
 			}
 		}()
 	}
-
-	getUserResp, err := w.Client.GetUser(ctx, stream.Cast.AgencySecret.ChannelName)
-	if err != nil {
-		return api.MetaData{}, err
-	}
-
-	ctx = log.With().Str("channelID", getUserResp.Username).Logger().WithContext(ctx)
-
-	meta := api.MetaData{
-		User:   getUserResp,
-		Stream: stream,
-	}
-
-	err = w.Process(ctx, meta, playbackURL)
-	return meta, err
 }
 
-type isOnlineResponse = struct {
-	ok          bool
-	stream      api.GetStreamsResponseElement
-	playbackURL string
+// waitProcessingOrFatal waits for the all the processes to finish.
+func (w *ChannelWatcher) waitProcessingOrFatal(timeout time.Duration) {
+	// Periodically check if all the processes are done.
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for {
+		select {
+		case <-ticker.C:
+			w.processingStreamsLock.Lock()
+			if len(w.processingStreams) == 0 {
+				w.processingStreamsLock.Unlock()
+				return
+			}
+			w.processingStreamsLock.Unlock()
+		case <-ctx.Done():
+			log.Fatal().Msg("timeout waiting for processing to finish")
+		}
+	}
 }
 
-// IsOnline checks if the live stream is online.
-func (w *ChannelWatcher) IsOnline(
+type HasNewStreamResponse struct {
+	HasNewStream bool
+	Stream       api.GetStreamsResponseElement
+	User         api.GetUserResponse
+	PlaybackURL  string
+}
+
+// HasNewStream checks if the live stream is online.
+func (w *ChannelWatcher) HasNewStream(
 	ctx context.Context,
-) (ok bool, streams api.GetStreamsResponseElement, playbackURL string, err error) {
+) (res HasNewStreamResponse, err error) {
 	log := log.Ctx(ctx)
-	res, err := try.DoExponentialBackoffWithContextAndResult(
+	res, err = try.DoExponentialBackoffWithContextAndResult(
 		ctx,
 		60,
 		30*time.Second,
 		2,
 		60*time.Minute,
-		func(ctx context.Context) (isOnlineResponse, error) {
+		func(ctx context.Context) (HasNewStreamResponse, error) {
 			streams, err := w.GetStreams(ctx, w.filterChannelID)
 			if err != nil {
 				if !errors.Is(err, api.ServerError{}) {
@@ -135,31 +217,68 @@ func (w *ChannelWatcher) IsOnline(
 						log.Err(err).Msg("notify failed")
 					}
 				}
-				return isOnlineResponse{}, err
+				return HasNewStreamResponse{}, err
 			}
 			if len(streams) == 0 {
-				return isOnlineResponse{
-					ok: false,
+				return HasNewStreamResponse{
+					HasNewStream: false,
 				}, nil
 			}
 
-			log.Info().Int("streams", len(streams)).Msg("streams found")
-
-			playbackURL, err := w.GetStreamPlaybackURL(ctx, streams[0].UUID)
-			if err != nil {
-				if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
-					log.Err(err).Msg("notify failed")
+			// Find a stream that is online and not being processed.
+			w.processingStreamsLock.Lock()
+			stream, ok := func() (stream api.GetStreamsResponseElement, ok bool) {
+				defer w.processingStreamsLock.Unlock()
+				for _, s := range streams {
+					if _, ok := w.processingStreams[s.UUID]; ok {
+						// Stream is being processed.
+						continue
+					}
+					return s, true
 				}
-				return isOnlineResponse{
-					ok:     false,
-					stream: streams[0],
+				// All streams are being processed. We can consider the channel "offline".
+				return api.GetStreamsResponseElement{}, false
+			}()
+			if !ok {
+				return HasNewStreamResponse{
+					HasNewStream: false,
+				}, nil
+			}
+
+			channelID := stream.Cast.AgencySecret.ChannelName
+
+			log.Info().Str("channelID", channelID).Str("stream", stream.Title).Msg("streams found")
+
+			getUserResp, err := w.Client.GetUser(ctx, channelID)
+			if err != nil {
+				if !errors.Is(err, api.ServerError{}) {
+					if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
+						log.Err(err).Msg("notify failed")
+					}
+				}
+				return HasNewStreamResponse{
+					HasNewStream: false,
+					Stream:       streams[0],
 				}, err
 			}
 
-			return isOnlineResponse{
-				ok:          true,
-				playbackURL: playbackURL,
-				stream:      streams[0],
+			playbackURL, err := w.GetStreamPlaybackURL(ctx, streams[0].UUID)
+			if err != nil {
+				if err := notifier.NotifyError(ctx, channelID, w.params.Labels, err); err != nil {
+					log.Err(err).Msg("notify failed")
+				}
+				return HasNewStreamResponse{
+					HasNewStream: false,
+					User:         getUserResp,
+					Stream:       streams[0],
+				}, err
+			}
+
+			return HasNewStreamResponse{
+				HasNewStream: true,
+				PlaybackURL:  playbackURL,
+				User:         getUserResp,
+				Stream:       streams[0],
 			}, nil
 		},
 	)
@@ -167,9 +286,9 @@ func (w *ChannelWatcher) IsOnline(
 		if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
 			log.Err(err).Msg("notify failed")
 		}
-		return false, api.GetStreamsResponseElement{}, "", err
+		return res, err
 	}
-	return res.ok, res.stream, res.playbackURL, err
+	return res, err
 }
 
 // Process runs the whole preparation, download and post-processing pipeline.

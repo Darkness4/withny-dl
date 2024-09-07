@@ -13,8 +13,6 @@ Automatically download withny livestream. Written in Go.
     - [Install from source (~16MB)](#install-from-source-16mb)
     - [Deployments (Kubernetes/Docker-Compose)](#deployments-kubernetesdocker-compose)
   - [Usage](#usage)
-    - [Download a single live withny stream](#download-a-single-live-withny-stream)
-    - [Download multiple live withny streams](#download-multiple-live-withny-streams)
   - [Details](#details)
     - [About the concatenation and the cleaning routine](#about-the-concatenation-and-the-cleaning-routine)
     - [About metrics, traces and continuous profiling](#about-metrics-traces-and-continuous-profiling)
@@ -125,76 +123,6 @@ Examples of deployments manifests are stored in the [`./deployments`](./deployme
 
 ## Usage
 
-### Download a single live withny stream
-
-```shell
-withny-dl [global options] download [command options] channelID
-```
-
-```shell
-OPTIONS:
-   Cleaning Routine:
-
-   --eligible-for-cleaning-age value, --cleaning-age value  Minimum age of .combined files to be eligible for cleaning. (default: 48h0m0s)
-   --scan-directory value                                   Directory to be scanned for .ts files to be deleted after concatenation.
-
-   Polling:
-
-   --loop                 Continue to download streams indefinitely. (default: false)
-   --max-tries value      On failure, keep retrying (cancellation and end of stream will still force abort). (default: 10)
-   --no-wait              Don't wait until the broadcast goes live, then start recording. (default: false)
-   --poll-interval value  How many seconds between checks to see if broadcast is live. (default: 5s)
-
-   Post-Processing:
-
-   --concat             Concatenate and remux with previous recordings after it is finished.  (default: false)
-   --extract-audio, -x  Generate an audio-only copy of the stream. (default: false)
-   --format value       Golang templating format. Available fields: ChannelID, ChannelName, Date, Time, Title, Ext, Labels.Key.
-Available format options:
-  ChannelID: ID of the broadcast
-  ChannelName: broadcaster's profile name
-  Date: local date YYYY-MM-DD
-  Time: local time HHMMSS
-  Ext: file extension
-  Title: title of the live broadcast
-  Labels.Key: custom labels
- (default: "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}")
-   --keep-intermediates, -k  Keep the raw .ts recordings after it has been remuxed. (default: false)
-   --max-packet-loss value   Allow a maximum of packet loss before aborting stream download. (default: 20)
-   --no-delete-corrupted     Delete corrupted .ts recordings. (default: false)
-   --no-remux                Do not remux recordings into mp4/m4a after it is finished. (default: false)
-   --remux-format value      Remux format of the video. (default: "mp4")
-
-   Streaming:
-
-   --credentials-file value                                 Path to a credentials file. Format is YAML and must contain 'username' and 'password' or 'access-token' and 'refresh-token'.
-   --credentials.access-token value                         Access token for withny login. You should also provide a refresh token.
-   --credentials.password value                             Password for withny login
-   --credentials.refresh-token value                        Refresh token for withny login.
-   --credentials.username value, --credentials.email value  Username/email for withny login
-   --quality.audio-only                                     Only download audio streams. (default: false)
-   --quality.max-bandwidth value                            Maximum inclusive bandwidth of the stream. (default: 0)
-   --quality.max-framerate value                            Maximum inclusive framerate of the stream. (default: 0)
-   --quality.max-height value                               Maximum inclusive height of the stream. (default: 0)
-   --quality.max-width value                                Maximum inclusive width of the stream. (default: 0)
-   --quality.min-bandwidth value                            Minimum inclusive bandwidth of the stream. (default: 0)
-   --quality.min-framerate value                            Minimum inclusive framerate of the stream. (default: 0)
-   --quality.min-height value                               Minimum inclusive height of the stream. (default: 0)
-   --quality.min-width value                                Minimum inclusive width of the stream. (default: 0)
-   --write-chat                                             Save live chat into a json file. (default: false)
-   --write-metadata-json                                    Dump output stream MetaData into a json file. (default: false)
-   --write-thumbnail                                        Download thumbnail into a file. (default: false)
-
-GLOBAL OPTIONS:
-   --debug        (default: false) [$DEBUG]
-   --trace        (default: false) [$TRACE]
-   --log-json     (default: false) [$LOG_JSON]
-   --help, -h     show help
-   --version, -v  print the version
-```
-
-### Download multiple live withny streams
-
 ```shell
 withny-dl [global options] watch [command options]
 ```
@@ -220,12 +148,41 @@ When running the watcher, the program opens the port `3000/tcp` for debugging. Y
 
 To configure the watcher, you must provide a configuration file. The configuration file is in YAML format. See the [config.yaml](config.yaml) file for an example.
 
-<details>
-
-<summary>Configuration Example</summary>
+Minimal configuration:
 
 ```yaml
----
+username: 'your-username'
+password: 'your-password'
+
+# Or with token:
+# token: "ey..."
+# refreshToken: "abc..."
+```
+
+```yaml
+credentialsFile: 'credentials.yaml'
+
+defaultParams:
+  outFormat: output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
+  remux: false
+  concat: true
+  scanDirectory: 'output'
+  eligibleForCleaningAge: '3h'
+  keepIntermediates: false
+  deleteCorrupted: true
+  extractAudio: true
+
+channels:
+  # An empty string means download'em all!
+  '':
+
+```
+
+<details>
+
+<summary>Configuration Full</summary>
+
+```yaml
 ---
 ## [REQUIRED] Path to the file containing the credentials. (default: '')
 ##
@@ -285,8 +242,6 @@ defaultParams:
   writeMetaDataJson: false
   ## Download thumbnail into a file. (default: false)
   writeThumbnail: false
-  ## Wait until the broadcast goes live, then start recording. (default: true)
-  waitForLive: true
   ## How many seconds between checks to see if broadcast is live. (default: 10s)
   waitPollInterval: '10s'
   ## Remux recordings into mp4/m4a after it is finished. (default: true)

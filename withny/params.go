@@ -15,7 +15,6 @@ type Params struct {
 	WriteChat              bool                   `yaml:"writeChat,omitempty"`
 	WriteMetaDataJSON      bool                   `yaml:"writeMetaDataJson,omitempty"`
 	WriteThumbnail         bool                   `yaml:"writeThumbnail,omitempty"`
-	WaitForLive            bool                   `yaml:"waitForLive,omitempty"`
 	WaitPollInterval       time.Duration          `yaml:"waitPollInterval,omitempty"`
 	Remux                  bool                   `yaml:"remux,omitempty"`
 	RemuxFormat            string                 `yaml:"remuxFormat,omitempty"`
@@ -41,7 +40,6 @@ type OptionalParams struct {
 	WriteChat              *bool                   `yaml:"writeChat,omitempty"`
 	WriteMetaDataJSON      *bool                   `yaml:"writeMetaDataJson,omitempty"`
 	WriteThumbnail         *bool                   `yaml:"writeThumbnail,omitempty"`
-	WaitForLive            *bool                   `yaml:"waitForLive,omitempty"`
 	WaitPollInterval       *time.Duration          `yaml:"waitPollInterval,omitempty"`
 	Remux                  *bool                   `yaml:"remux,omitempty"`
 	RemuxFormat            *string                 `yaml:"remuxFormat,omitempty"`
@@ -62,7 +60,6 @@ var DefaultParams = Params{
 	WriteChat:              false,
 	WriteMetaDataJSON:      false,
 	WriteThumbnail:         false,
-	WaitForLive:            true,
 	WaitPollInterval:       10 * time.Second,
 	Remux:                  true,
 	RemuxFormat:            "mp4",
@@ -94,9 +91,6 @@ func (override *OptionalParams) Override(params *Params) {
 	}
 	if override.WriteThumbnail != nil {
 		params.WriteThumbnail = *override.WriteThumbnail
-	}
-	if override.WaitForLive != nil {
-		params.WaitForLive = *override.WaitForLive
 	}
 	if override.WaitPollInterval != nil {
 		params.WaitPollInterval = *override.WaitPollInterval
@@ -145,7 +139,6 @@ func (p *Params) Clone() *Params {
 		WriteChat:              p.WriteChat,
 		WriteMetaDataJSON:      p.WriteMetaDataJSON,
 		WriteThumbnail:         p.WriteThumbnail,
-		WaitForLive:            p.WaitForLive,
 		WaitPollInterval:       p.WaitPollInterval,
 		Remux:                  p.Remux,
 		RemuxFormat:            p.RemuxFormat,

@@ -35,7 +35,6 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 	suite.impl = withny.NewChannelWatcher(suite.client, &withny.Params{
 		PacketLossMax:          20,
 		OutFormat:              "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}",
-		WaitForLive:            true,
 		WaitPollInterval:       10 * time.Second,
 		Remux:                  true,
 		Concat:                 true,
@@ -49,19 +48,18 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 
 func (suite *ChannelWatcherIntegrationTestSuite) TestWatch() {
 	// Act
-	_, err := suite.impl.Watch(suite.ctx)
-	suite.Require().NoError(err)
+	suite.impl.Watch(suite.ctx)
 }
 
-func (suite *ChannelWatcherIntegrationTestSuite) TestIsOnline() {
+func (suite *ChannelWatcherIntegrationTestSuite) TestHasNewStream() {
 	// Act
-	ok, stream, playbackURL, err := suite.impl.IsOnline(context.Background())
+	res, err := suite.impl.HasNewStream(context.Background())
 
 	// Assert
 	suite.Require().NoError(err)
-	suite.Require().Equal(true, ok)
-	suite.Require().NotEmpty(stream)
-	suite.Require().NotEmpty(playbackURL)
+	suite.Require().Equal(true, res.HasNewStream)
+	suite.Require().NotEmpty(res.Stream)
+	suite.Require().NotEmpty(res.PlaybackURL)
 }
 
 func TestChannelWatcherIntegrationTestSuite(t *testing.T) {

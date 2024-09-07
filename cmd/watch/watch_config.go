@@ -158,7 +158,7 @@ func ConfigReloader(
 				select {
 				case <-doneChan:
 					log.Info().Msg("loading new config")
-				case <-time.After(30 * time.Second):
+				case <-time.After(5 * time.Minute):
 					log.Fatal().Msg("couldn't load a new config because of a deadlock")
 				}
 			}
@@ -178,7 +178,7 @@ func ConfigReloader(
 			select {
 			case <-doneChan:
 				log.Info().Msg("config reloader graceful exit")
-			case <-time.After(30 * time.Second):
+			case <-time.After(5 * time.Minute):
 				log.Fatal().Msg("config reloader force fatal exit")
 			}
 

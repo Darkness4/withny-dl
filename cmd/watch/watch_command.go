@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -251,8 +250,11 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 
 		go func(channelID string, params *withny.Params) {
 			defer wg.Done()
-			log := log.With().Str("channelID", channelID).Logger()
-			for {
+			// Only handle IDLE state for a channelID not empty.
+			// This is because an empty channelID means multiple channels are being watched.
+			// Therefore, it is impossible to predict the true channelID that will be used.
+			if channelID != "" {
+				log := log.With().Str("channelID", channelID).Logger()
 				state.DefaultState.SetChannelState(
 					channelID,
 					state.DownloadStateIdle,
@@ -261,50 +263,9 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 				if err := notifier.NotifyIdle(ctx, channelID, params.Labels); err != nil {
 					log.Err(err).Msg("notify failed")
 				}
-
-				meta, err := handleChannel(ctx, client, channelID, params)
-				if errors.Is(err, context.Canceled) {
-					log.Info().Msg("abort watching channel")
-					if state.DefaultState.GetChannelState(
-						channelID,
-					) != state.DownloadStateIdle {
-						state.DefaultState.SetChannelState(
-							channelID,
-							state.DownloadStateCanceled,
-							state.WithLabels(params.Labels),
-						)
-						if err := notifier.NotifyCanceled(
-							context.Background(),
-							channelID,
-							params.Labels,
-						); err != nil {
-							log.Err(err).Msg("notify failed")
-						}
-					}
-					return
-				} else if err != nil {
-					log.Err(err).Msg("failed to download")
-					state.DefaultState.SetChannelError(channelID, err)
-					if err := notifier.NotifyError(
-						context.Background(),
-						channelID,
-						params.Labels,
-						err,
-					); err != nil {
-						log.Err(err).Msg("notify failed")
-					}
-				} else {
-					state.DefaultState.SetChannelState(
-						channelID,
-						state.DownloadStateFinished,
-						state.WithLabels(params.Labels),
-					)
-					if err := notifier.NotifyFinished(ctx, channelID, params.Labels, meta); err != nil {
-						log.Err(err).Msg("notify failed")
-					}
-				}
-				time.Sleep(time.Second)
 			}
+
+			withny.NewChannelWatcher(client, params, channelID).Watch(ctx)
 		}(channel, channelParams)
 
 		// Spread out the channel start time to avoid hammering the server.
@@ -359,20 +320,4 @@ func checkVersion(ctx context.Context, client *http.Client, version string) {
 			log.Err(err).Msg("notify failed")
 		}
 	}
-}
-
-func handleChannel(
-	ctx context.Context,
-	client *api.Client,
-	channelID string,
-	params *withny.Params,
-) (api.MetaData, error) {
-	downloader := withny.NewChannelWatcher(client, params, channelID)
-
-	meta, err := downloader.Watch(ctx)
-	if err != nil && err != io.EOF {
-		log.Err(err).Msg("watcher has stopped")
-		return api.MetaData{}, err
-	}
-	return meta, nil
 }

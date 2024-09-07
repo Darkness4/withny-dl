@@ -7,24 +7,16 @@ data:
 
     credentialsFile: '/secrets/credentials.yaml'
 
-    notifier:
-      gotify:
-        enabled: true
-        endpoint: https://gotify.example.com
-        token: 'random'
-
     defaultParams:
       outFormat: /output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
-      waitForLive: true
       remux: false
-      remuxFormat: mp4
       concat: true
-      keepIntermediates: false
       scanDirectory: '/output'
-      eligibleForCleaningAge: '48h'
+      eligibleForCleaningAge: '3h'
+      keepIntermediates: false
       deleteCorrupted: true
       extractAudio: true
 
     channels:
-      'admin':
-        labels: {}
+      # An empty string means download'em all!
+      '':
