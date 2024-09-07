@@ -217,6 +217,8 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			defer cancel()
 			if err := notifier.NotifyPanicked(ctx, err); err != nil {
 				log.Err(err).Msg("notify failed")
 			}
