@@ -115,7 +115,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 			if !res.HasNewStream {
 				// Context has been canceled.
 				log.Warn().Msg("channel watcher context canceled, waiting for processing to finish")
-				w.waitProcessingOrFatal(5 * time.Minute)
+				w.waitProcessingOrFatal(30 * time.Second)
 				log.Warn().Msg("processing finished")
 				return
 			}
