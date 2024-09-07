@@ -80,6 +80,10 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 		configChan <- config
 	}()
 
+	// Use ticker as fallback in case fsnotify fails
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to watch config")
@@ -98,35 +102,20 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 			// The parent context was canceled, exit the loop
 			log.Err(ctx.Err()).Msg("watcher context canceled")
 			return
+		case <-ticker.C:
+			lastModTime, err = loadConfigOnModification(ctx, filename, configChan, lastModTime)
+			if err != nil {
+				continue
+			}
+
 		case _, ok := <-debouncedEvents:
 			if !ok {
 				log.Error().Msg("watcher channel closed")
 				return
 			}
-			stat, err := os.Stat(filename)
+			lastModTime, err = loadConfigOnModification(ctx, filename, configChan, lastModTime)
 			if err != nil {
-				log.Error().Str("file", filename).Err(err).Msg("failed to stat file")
 				continue
-			}
-
-			if !stat.ModTime().Equal(lastModTime) {
-				lastModTime = stat.ModTime()
-				log.Info().Msg("new config detected")
-
-				config, err := loadConfig(filename)
-				if err != nil {
-					log.Error().Str("file", filename).Err(err).Msg("failed to load config")
-					continue
-				}
-				select {
-				case configChan <- config:
-					// Config sent successfully
-				case <-ctx.Done():
-					// The parent context was canceled, exit the loop
-					log.Err(ctx.Err()).
-						Msg("config reloader context canceled while the config was being sent")
-					return
-				}
 			}
 
 		case err, ok := <-watcher.Errors:
@@ -137,6 +126,40 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 			log.Error().Str("file", filename).Err(err).Msg("config reloader thrown an error")
 		}
 	}
+}
+
+func loadConfigOnModification(
+	ctx context.Context,
+	filename string,
+	configChan chan<- *Config,
+	lastModTime time.Time,
+) (time.Time, error) {
+	stat, err := os.Stat(filename)
+	if err != nil {
+		log.Error().Str("file", filename).Err(err).Msg("failed to stat file")
+		return lastModTime, err
+	}
+
+	if !stat.ModTime().Equal(lastModTime) {
+		lastModTime = stat.ModTime()
+		log.Info().Msg("new config detected")
+
+		config, err := loadConfig(filename)
+		if err != nil {
+			log.Error().Str("file", filename).Err(err).Msg("failed to load config")
+			return lastModTime, err
+		}
+		select {
+		case configChan <- config:
+			// Config sent successfully
+		case <-ctx.Done():
+			// The parent context was canceled, exit the loop
+			log.Err(ctx.Err()).
+				Msg("config reloader context canceled while the config was being sent")
+			return lastModTime, ctx.Err()
+		}
+	}
+	return lastModTime, nil
 }
 
 // ConfigReloader reloads the config when a new one is detected.
