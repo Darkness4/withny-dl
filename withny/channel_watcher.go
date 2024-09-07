@@ -191,6 +191,7 @@ func (w *ChannelWatcher) waitProcessingOrFatal(timeout time.Duration) {
 	}
 }
 
+// HasNewStreamResponse is the response of HasNewStream.
 type HasNewStreamResponse struct {
 	HasNewStream bool
 	Stream       api.GetStreamsResponseElement
