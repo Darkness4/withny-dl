@@ -129,6 +129,11 @@ func (w *ChannelWatcher) IsOnline(
 		func(ctx context.Context) (isOnlineResponse, error) {
 			res, err := w.GetStreams(ctx, w.channelID)
 			if err != nil {
+				if !errors.Is(err, api.ServerError{}) {
+					if err := notifier.NotifyError(ctx, w.channelID, w.params.Labels, err); err != nil {
+						log.Err(err).Msg("notify failed")
+					}
+				}
 				return isOnlineResponse{}, err
 			}
 			if res.Count == 0 {

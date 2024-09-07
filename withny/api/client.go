@@ -27,6 +27,15 @@ const (
 	streamPlaybackURL = streamsURL + "/%s/playback-url"
 )
 
+type ServerError struct {
+	Err    error
+	Status int
+}
+
+func (e ServerError) Error() string {
+	return fmt.Sprintf("server error: %s", e.Err)
+}
+
 // GetPlaybackURLError is an error given by the GetStreamPlaybackURL API.
 type GetPlaybackURLError struct {
 	Err      error
@@ -202,6 +211,12 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
+		if res.StatusCode >= http.StatusInternalServerError {
+			return GetUserResponse{}, ServerError{
+				Err:    err,
+				Status: res.StatusCode,
+			}
+		}
 		return GetUserResponse{}, err
 	}
 
@@ -251,6 +266,12 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
+		if res.StatusCode >= http.StatusInternalServerError {
+			return GetStreamsResponse{}, ServerError{
+				Err:    err,
+				Status: res.StatusCode,
+			}
+		}
 		return GetStreamsResponse{}, err
 	}
 
@@ -302,6 +323,12 @@ func (c *Client) LoginWithRefreshToken(
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
+		if res.StatusCode >= http.StatusInternalServerError {
+			return Credentials{}, ServerError{
+				Err:    err,
+				Status: res.StatusCode,
+			}
+		}
 		return Credentials{}, err
 	}
 
@@ -357,6 +384,12 @@ func (c *Client) LoginWithUserPassword(
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
+		if res.StatusCode >= http.StatusInternalServerError {
+			return Credentials{}, ServerError{
+				Err:    err,
+				Status: res.StatusCode,
+			}
+		}
 		return Credentials{}, err
 	}
 
