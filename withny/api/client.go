@@ -19,23 +19,24 @@ import (
 )
 
 const (
-	apiURL            = "https://www.withny.fun/api"
-	loginURL          = apiURL + "/auth/login"
-	refreshURL        = apiURL + "/auth/token"
-	userURL           = apiURL + "/user"
-	streamsURL        = apiURL + "/streams"
-	streamPlaybackURL = streamsURL + "/%s/playback-url"
+	apiURL              = "https://www.withny.fun/api"
+	loginURL            = apiURL + "/auth/login"
+	refreshURL          = apiURL + "/auth/token"
+	userURL             = apiURL + "/user"
+	streamsURL          = apiURL + "/streams"
+	streamsWithRoomsURL = apiURL + "/streams/with-rooms"
+	streamPlaybackURL   = streamsURL + "/%s/playback-url"
 )
 
 // ServerError is an error given by the withny server.
 type ServerError struct {
-	Err    error
 	Status int
+	Body   string
 }
 
 // Error returns the error message.
 func (e ServerError) Error() string {
-	return fmt.Sprintf("server error: %s", e.Err)
+	return fmt.Sprintf("server error, code=%d, body=%s", e.Status, e.Body)
 }
 
 // GetPlaybackURLError is an error given by the GetStreamPlaybackURL API.
@@ -215,8 +216,8 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
 			return GetUserResponse{}, ServerError{
-				Err:    err,
 				Status: res.StatusCode,
+				Body:   string(body),
 			}
 		}
 		return GetUserResponse{}, err
@@ -229,7 +230,7 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 
 // GetStreams will fetch the streams for the given channelID.
 func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsResponse, error) {
-	u, err := url.Parse(streamsURL)
+	u, err := url.Parse(streamsWithRoomsURL)
 	if err != nil {
 		panic(err)
 	}
@@ -270,8 +271,8 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
 			return GetStreamsResponse{}, ServerError{
-				Err:    err,
 				Status: res.StatusCode,
+				Body:   string(body),
 			}
 		}
 		return GetStreamsResponse{}, err
@@ -327,8 +328,8 @@ func (c *Client) LoginWithRefreshToken(
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
 			return Credentials{}, ServerError{
-				Err:    err,
 				Status: res.StatusCode,
+				Body:   string(body),
 			}
 		}
 		return Credentials{}, err
@@ -388,8 +389,8 @@ func (c *Client) LoginWithUserPassword(
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
 			return Credentials{}, ServerError{
-				Err:    err,
 				Status: res.StatusCode,
+				Body:   string(body),
 			}
 		}
 		return Credentials{}, err
@@ -472,10 +473,20 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 // GetPlaylists will fetch the playlists from the given playbackURL.
 func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playlist, error) {
 	// No need for auth request. Token is included in the playback URL.
+	url, err := url.Parse(playbackURL)
+	if err != nil {
+		log.Err(err).Msg("failed to parse playback URL")
+		panic(err)
+	}
+	q := url.Query()
+	q.Set("supported_codecs", "av1,h264")
+
+	url.RawQuery = q.Encode()
+
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		playbackURL,
+		url.String(),
 		nil,
 	)
 	if err != nil {
@@ -491,7 +502,7 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 
 	log := log.With().
 		Str("method", "GET").
-		Str("url", playbackURL).
+		Str("url", url.String()).
 		Logger()
 
 	res, err := c.Do(req)

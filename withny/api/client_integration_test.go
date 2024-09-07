@@ -164,6 +164,7 @@ func TestClient(t *testing.T) {
 		streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
 		require.NoError(t, err)
 		require.Greater(t, len(streams), 0)
+		fmt.Println(streams[0].UUID)
 
 		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
 		require.NoError(t, err)
