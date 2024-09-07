@@ -10,7 +10,7 @@ on:
       - '**.c'
       - '**.h'
       - 'Dockerfile*'
-      - '.github/workflows/main.yaml'
+      - '.github/workflows/contract-test.yaml'
       - 'go.*'
       - 'Makefile'
   pull_request:
