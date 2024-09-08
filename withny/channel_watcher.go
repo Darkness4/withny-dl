@@ -266,7 +266,7 @@ func (w *ChannelWatcher) HasNewStream(
 				getUserResp, lastErr = w.Client.GetUser(ctx, channelID)
 				if lastErr != nil {
 					if !errors.Is(lastErr, api.ServerError{}) {
-						if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
+						if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, lastErr); err != nil {
 							log.Err(err).Msg("notify failed")
 						}
 					}
@@ -275,7 +275,7 @@ func (w *ChannelWatcher) HasNewStream(
 
 				playbackURL, lastErr = w.GetStreamPlaybackURL(ctx, s.UUID)
 				if lastErr != nil {
-					if err := notifier.NotifyError(ctx, channelID, w.params.Labels, err); err != nil {
+					if err := notifier.NotifyError(ctx, channelID, w.params.Labels, lastErr); err != nil {
 						log.Err(err).Msg("notify failed")
 					}
 					continue
