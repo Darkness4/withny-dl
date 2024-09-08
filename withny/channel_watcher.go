@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -245,6 +246,11 @@ func (w *ChannelWatcher) HasNewStream(
 			var stream api.GetStreamsResponseElement
 			var lastErr error
 			for _, s := range streams {
+				// Check if stream is an ignored channel.
+				if slices.Contains(w.params.Ignore, s.Cast.AgencySecret.ChannelName) {
+					continue
+				}
+
 				w.processingStreamsLock.Lock()
 				_, ok := w.processingStreams[s.UUID]
 				w.processingStreamsLock.Unlock()

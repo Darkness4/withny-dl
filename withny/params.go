@@ -25,6 +25,7 @@ type Params struct {
 	DeleteCorrupted        bool                   `yaml:"deleteCorrupted,omitempty"`
 	ExtractAudio           bool                   `yaml:"extractAudio,omitempty"`
 	Labels                 map[string]string      `yaml:"labels,omitempty"`
+	Ignore                 []string               `yaml:"ignore,omitempty"`
 }
 
 func (p *Params) String() string {
@@ -50,6 +51,7 @@ type OptionalParams struct {
 	DeleteCorrupted        *bool                   `yaml:"deleteCorrupted,omitempty"`
 	ExtractAudio           *bool                   `yaml:"extractAudio,omitempty"`
 	Labels                 map[string]string       `yaml:"labels,omitempty"`
+	Ignore                 []string                `yaml:"ignore,omitempty"`
 }
 
 // DefaultParams is the default set of parameters.
@@ -70,6 +72,7 @@ var DefaultParams = Params{
 	DeleteCorrupted:        true,
 	ExtractAudio:           false,
 	Labels:                 nil,
+	Ignore:                 []string{},
 }
 
 // Override applies the values from the OptionalParams to the Params.
@@ -127,6 +130,9 @@ func (override *OptionalParams) Override(params *Params) {
 			params.Labels[k] = v
 		}
 	}
+	if override.Ignore != nil {
+		params.Ignore = override.Ignore
+	}
 }
 
 // Clone creates a deep copy of the Params struct.
@@ -148,6 +154,7 @@ func (p *Params) Clone() *Params {
 		EligibleForCleaningAge: p.EligibleForCleaningAge,
 		DeleteCorrupted:        p.DeleteCorrupted,
 		ExtractAudio:           p.ExtractAudio,
+		Ignore:                 make([]string, len(p.Ignore)),
 	}
 
 	// Clone the labels map if it exists
@@ -157,6 +164,9 @@ func (p *Params) Clone() *Params {
 			clone.Labels[k] = v
 		}
 	}
+
+	// Clone the ignore slice
+	copy(clone.Ignore, p.Ignore)
 
 	return &clone
 }

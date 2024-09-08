@@ -172,10 +172,17 @@ defaultParams:
   deleteCorrupted: true
   extractAudio: true
 
+## A list of channel IDs.
 channels:
-  # An empty string means download'em all!
+  # An empty string will download every live channels!
   '':
+    # Ignore specific channels.
+    ignore:
+      - 'admin'
 
+  'admin':
+    labels:
+      EnglishName: Admin
 ```
 
 <details>

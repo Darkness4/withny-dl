@@ -112,6 +112,8 @@ defaultParams:
   ##
   ## The value of the label can be invoked in the go template by using {{ .Labels.Key }}.
   labels: {}
+  ## List of channels to ignore. Only useful if the empty string is used to download all live channels. (default: [])
+  ignore: []
 
 rateLimitAvoidance:
   ## Spread the watchers over time to avoid rate limiting. (default 500ms)
@@ -123,9 +125,17 @@ rateLimitAvoidance:
 ##
 ## The keys are the channel IDs/handles without the '@'.
 channels:
+  ## Track the "admin" channel.
   'admin':
+    ## Override some default parameters. See defaultParams for available options.
     labels:
       EnglishName: Admin
+
+  ## Using an empty string will download every live channels.
+  '':
+    # Ignore specific channels.
+    ignore:
+      - 'admin'
 
 ## Notify about the state of the watcher.
 ##
