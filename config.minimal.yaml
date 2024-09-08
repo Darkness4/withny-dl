@@ -1,10 +1,5 @@
 credentialsFile: 'credentials.yaml'
 
-notifier:
-  enabled: true
-  urls:
-    - 'gotify://gotify.example.com/token'
-
 defaultParams:
   outFormat: output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
   remux: false
@@ -18,4 +13,5 @@ defaultParams:
   labels: {}
 
 channels:
-  'admin':
+  # An empty string will download every live channels.
+  '':

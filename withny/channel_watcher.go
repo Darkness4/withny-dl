@@ -246,11 +246,12 @@ func (w *ChannelWatcher) HasNewStream(
 			var lastErr error
 			for _, s := range streams {
 				w.processingStreamsLock.Lock()
-				if _, ok := w.processingStreams[s.UUID]; ok {
+				_, ok := w.processingStreams[s.UUID]
+				w.processingStreamsLock.Unlock()
+				if ok {
 					// Stream is being processed.
 					continue
 				}
-				w.processingStreamsLock.Unlock()
 
 				// Stream is not being processed, check if it is online.
 
