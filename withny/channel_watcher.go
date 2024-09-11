@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"slices"
@@ -246,6 +247,15 @@ func (w *ChannelWatcher) HasNewStream(
 			var stream api.GetStreamsResponseElement
 			var lastErr error
 			for _, s := range streams {
+				if s.Cast.AgencySecret.ChannelName == "" {
+					err := fmt.Errorf("stream %s has no channelID", s.Title)
+					if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
+						log.Err(err).Msg("notify failed")
+					}
+					log.Err(err).Any("stream", s).Msg("stream has no channelID")
+					continue
+				}
+
 				// Check if stream is an ignored channel.
 				if slices.Contains(w.params.Ignore, s.Cast.AgencySecret.ChannelName) {
 					continue
