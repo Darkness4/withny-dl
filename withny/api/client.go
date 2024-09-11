@@ -66,8 +66,9 @@ func (e UnauthorizedError) Error() string {
 // Claims is the JWT claims for the withny API.
 type Claims struct {
 	jwt.RegisteredClaims
-	UUID  string `json:"uuid"`
-	Scope string `json:"scope"`
+	UserUUID  string `json:"userUuid"`
+	TokenUUID string `json:"tokenUuid"`
+	Scope     string `json:"scope"`
 }
 
 // Credentials is the credentials for the withny API.
