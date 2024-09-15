@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"slices"
@@ -248,11 +247,8 @@ func (w *ChannelWatcher) HasNewStream(
 			var lastErr error
 			for _, s := range streams {
 				if s.Cast.AgencySecret.ChannelName == "" {
-					err := fmt.Errorf("stream %s has no channelID", s.Title)
-					if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
-						log.Err(err).Msg("notify failed")
-					}
-					log.Err(err).Any("stream", s).Msg("stream has no channelID")
+					// Stream is scheduled to be live, but not online yet.
+					log.Warn().Any("stream", s).Msg("stream is not ready")
 					continue
 				}
 
