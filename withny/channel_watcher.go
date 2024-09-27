@@ -422,13 +422,16 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbac
 	if w.params.WriteMetaDataJSON {
 		log.Info().Str("fnameInfo", fnameInfo).Msg("writing info json")
 		func() {
-			b, err := json.MarshalIndent(meta, "", "  ")
+			f, err := os.OpenFile(fnameInfo, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 			if err != nil {
-				log.Err(err).Msg("failed to marshal meta")
+				log.Error().Err(err).Msg("failed to open info json")
 				return
 			}
-			if err := os.WriteFile(fnameInfo, b, 0o755); err != nil {
-				log.Err(err).Msg("failed to write meta in info json")
+			defer f.Close()
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(meta); err != nil {
+				log.Error().Err(err).Msg("failed to encode meta in info json")
 				return
 			}
 		}()
