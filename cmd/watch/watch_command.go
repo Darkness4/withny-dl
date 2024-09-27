@@ -253,6 +253,13 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 		go func(channelID string, params *withny.Params) {
 			defer wg.Done()
 			withny.NewChannelWatcher(client, params, channelID).Watch(ctx)
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				log.Panic().Msg("channel watcher stopped before parent context is canceled")
+			}
 		}(channel, channelParams)
 
 		// Spread out the channel start time to avoid hammering the server.
