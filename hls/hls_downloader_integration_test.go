@@ -1,4 +1,4 @@
-//go:build integration
+//go:build contract
 
 package hls_test
 
@@ -16,6 +16,7 @@ import (
 	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,6 +24,24 @@ func init() {
 	log.Logger = log.Logger.With().Caller().Logger()
 	_ = godotenv.Load(".env")
 	_ = godotenv.Load(".env.test")
+}
+
+func findAnyLiveStream(t *testing.T, client *api.Client) (username string) {
+	streams, err := client.GetStreams(context.Background(), "")
+	require.NoError(t, err)
+
+	if len(streams) == 0 {
+		t.Skip("No live streams found")
+	}
+
+	// Find a live stream that is not restricted
+	for _, stream := range streams {
+		if stream.Price.String() == "0" {
+			return stream.Cast.AgencySecret.ChannelName
+		}
+	}
+
+	return streams[0].Cast.AgencySecret.ChannelName
 }
 
 type DownloaderIntegrationTestSuite struct {
@@ -37,7 +56,7 @@ func (suite *DownloaderIntegrationTestSuite) fetchPlaylist(
 	client *api.Client,
 ) api.Playlist {
 	// Act
-	streams, err := client.GetStreams(context.Background(), os.Getenv("WITHNY_STREAM_USERNAME"))
+	streams, err := client.GetStreams(context.Background(), findAnyLiveStream(suite.T(), client))
 	suite.Require().NoError(err)
 	suite.Require().Greater(len(streams), 0)
 

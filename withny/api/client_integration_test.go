@@ -30,6 +30,13 @@ func findAnyLiveStream(t *testing.T, client *api.Client) (username string) {
 		t.Skip("No live streams found")
 	}
 
+	// Find a live stream that is not restricted
+	for _, stream := range streams {
+		if stream.Price.String() == "0" {
+			return stream.Cast.AgencySecret.ChannelName
+		}
+	}
+
 	return streams[0].Cast.AgencySecret.ChannelName
 }
 
