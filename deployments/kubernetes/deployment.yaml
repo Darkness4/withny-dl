@@ -68,6 +68,8 @@ spec:
               name: withny-config
             - mountPath: '/secrets'
               name: credentials-secret
+            - mountPath: '/tmp'
+              name: tmp
       volumes:
         - name: withny-config
           configMap:
@@ -80,3 +82,5 @@ spec:
           secret:
             secretName: credentials-secret
             defaultMode: 0600
+        - name: tmp
+          emptyDir: {}
