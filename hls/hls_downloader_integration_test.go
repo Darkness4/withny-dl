@@ -87,7 +87,7 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 	credReader := &secret.UserPasswordFromEnv{}
 
 	// Check livestream
-	suite.client = api.NewClient(hclient, credReader)
+	suite.client = api.NewClient(hclient, credReader, secret.NewTmpCache())
 	err = suite.client.Login(context.Background())
 	suite.Require().NoError(err)
 

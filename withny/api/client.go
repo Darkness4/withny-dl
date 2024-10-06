@@ -79,10 +79,10 @@ type Credentials struct {
 
 // SavedCredentials is the saved credentials given by the user for the withny API.
 type SavedCredentials struct {
-	Username     string `yaml:"username"`
-	Password     string `yaml:"password"`
-	Token        string `json:"token"`
-	RefreshToken string `json:"refreshToken"`
+	Username     string `yaml:"username"     json:"username"`
+	Password     string `yaml:"password"     json:"password"`
+	Token        string `yaml:"token"        json:"token"`
+	RefreshToken string `yaml:"refreshToken" json:"refreshToken"`
 }
 
 // CredentialsReader is an interface for reading saved credentials.
@@ -90,26 +90,40 @@ type CredentialsReader interface {
 	Read() (SavedCredentials, error)
 }
 
+// CredentialsCache is an interface for caching credentials.
+type CredentialsCache interface {
+	Set(creds Credentials) error
+	Get() (Credentials, error)
+	Invalidate() error
+}
+
 // Client is a withny API client.
 type Client struct {
 	*http.Client
 	credentialsReader CredentialsReader
-	credentials       Credentials
+	credentialsCache  CredentialsCache
 }
 
 // SetCredentials sets the credentials for the client.
 func (c *Client) SetCredentials(creds Credentials) {
-	c.credentials = creds
+	err := c.credentialsCache.Set(creds)
+	if err != nil {
+		log.Err(err).Msg("failed to cache credentials")
+	}
 }
 
 // NewClient creates a new withny API client.
-func NewClient(client *http.Client, reader CredentialsReader) *Client {
+func NewClient(client *http.Client, reader CredentialsReader, cache CredentialsCache) *Client {
 	if reader == nil {
 		log.Warn().Msg("no user and password provided")
+	}
+	if cache == nil {
+		log.Panic().Msg("no credentials cache provided")
 	}
 	return &Client{
 		Client:            client,
 		credentialsReader: reader,
+		credentialsCache:  cache,
 	}
 }
 
@@ -124,8 +138,12 @@ func (c *Client) NewAuthRequestWithContext(
 		log.Err(err).Msg("failed to create request")
 		return nil, err
 	}
-	if c.credentials.TokenType != "" {
-		req.Header.Set("Authorization", c.credentials.TokenType+" "+c.credentials.Token)
+	creds, err := c.credentialsCache.Get()
+	if err != nil {
+		log.Err(err).Msg("failed to get credentials")
+	}
+	if creds.TokenType != "" {
+		req.Header.Set("Authorization", creds.TokenType+" "+creds.Token)
 	}
 	return req, nil
 }
@@ -133,43 +151,61 @@ func (c *Client) NewAuthRequestWithContext(
 // Login will login to withny and store the credentials in the client.
 func (c *Client) Login(ctx context.Context) (err error) {
 	var creds Credentials
+	cachedCreds, err := c.credentialsCache.Get()
+	if err != nil {
+		log.Err(err).Msg("failed to get credentials")
+	}
 
 	switch {
-	case c.credentials.Token != "":
-		creds, err = c.LoginWithRefreshToken(ctx, c.credentials.RefreshToken)
+	case cachedCreds.Token != "":
+		creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
 		if err != nil {
-			log.Err(err).Msg("failed to refresh token, will use saved credentials")
-			creds, err = c.loginWithSaved(ctx)
+			log.Err(err).Msg("failed to refresh token from cache, will use provided credentials")
+			err = c.credentialsCache.Invalidate()
+			if err != nil {
+				log.Err(err).Msg("failed to invalidate cache")
+			}
+			creds, err = c.loginWithReader(ctx)
 		}
 	default:
-		creds, err = c.loginWithSaved(ctx)
+		creds, err = c.loginWithReader(ctx)
 	}
 	if err != nil {
 		log.Err(err).Msg("failed to login")
 		return err
 	}
 
-	c.credentials = creds
+	if err := c.credentialsCache.Set(creds); err != nil {
+		log.Err(err).Msg("failed to cache credentials")
+	}
 	return nil
 }
 
-func (c *Client) loginWithSaved(ctx context.Context) (Credentials, error) {
+func (c *Client) loginWithReader(ctx context.Context) (Credentials, error) {
 	if c.credentialsReader == nil {
 		return Credentials{}, fmt.Errorf("no credentials provided")
 	}
-	saved, err := c.credentialsReader.Read()
+	creds, err := c.credentialsReader.Read()
 	if err != nil {
 		log.Err(err).Msg("failed to read credentials")
 		return Credentials{}, err
 	}
-	if saved.Username != "" {
-		return c.LoginWithUserPassword(ctx, saved.Username, saved.Password)
-	} else if saved.Token != "" {
+	if creds.Username != "" {
+		return c.LoginWithUserPassword(ctx, creds.Username, creds.Password)
+	} else if creds.Token != "" {
 		// Hijack the client token to override authorization header
-		c.credentials.Token = saved.Token
-		c.credentials.TokenType = "Bearer"
-		c.credentials.RefreshToken = saved.RefreshToken
-		return c.LoginWithRefreshToken(ctx, saved.RefreshToken)
+		newCredentials := Credentials{
+			LoginResponse: LoginResponse{
+				Token:        creds.Token,
+				RefreshToken: creds.RefreshToken,
+				TokenType:    "Bearer",
+			},
+		}
+		err := c.credentialsCache.Set(newCredentials)
+		if err != nil {
+			log.Err(err).Msg("failed to cache credentials")
+		}
+		return c.LoginWithRefreshToken(ctx, creds.RefreshToken)
 	}
 	return Credentials{}, fmt.Errorf("no credentials provided")
 }
@@ -324,10 +360,18 @@ func (c *Client) LoginWithRefreshToken(
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
+		if res.StatusCode == http.StatusUnauthorized {
+			log.Err(err).
+				Str("response", string(body)).
+				Int("status", res.StatusCode).
+				Str("refreshToken", refreshToken).
+				Msg("unexpected status code (refresh token is already used?)")
+		}
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
+			Str("refreshToken", refreshToken).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
 			return Credentials{}, ServerError{
@@ -534,7 +578,11 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 		return err
 	}
 
-	date, err := c.credentials.GetExpirationTime()
+	creds, err := c.credentialsCache.Get()
+	if err != nil {
+		log.Err(err).Msg("failed to get credentials")
+	}
+	date, err := creds.GetExpirationTime()
 	if err != nil {
 		panic(err)
 	}
@@ -560,7 +608,11 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 				ticker.Reset(5 * time.Minute)
 				continue
 			}
-			date, err := c.credentials.GetExpirationTime()
+			creds, err := c.credentialsCache.Get()
+			if err != nil {
+				log.Err(err).Msg("failed to get credentials")
+			}
+			date, err := creds.GetExpirationTime()
 			if err != nil {
 				panic(err)
 			}

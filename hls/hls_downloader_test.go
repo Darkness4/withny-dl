@@ -287,7 +287,7 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 		}),
 	)
 	suite.impl = NewDownloader(
-		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}),
+		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}, secret.NewTmpCache()),
 		&log.Logger,
 		10,
 		suite.server.URL,
@@ -364,7 +364,7 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 		}),
 	)
 	suite.impl = NewDownloader(
-		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}),
+		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}, secret.NewTmpCache()),
 		&log.Logger,
 		10,
 		suite.server.URL,

@@ -56,7 +56,7 @@ var Command = &cli.Command{
 				Username: username,
 				Password: password,
 			},
-		})
+		}, secret.NewTmpCache())
 		if err := client.Login(ctx); err != nil {
 			log.Err(err).
 				Msg("failed to login to withny")

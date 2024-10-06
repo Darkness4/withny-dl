@@ -80,8 +80,12 @@ func NewWebSocket(
 // Dial connects to the WebSocket server.
 func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 	// Build header query which is the base64 encoded value of the json of authorization and host.
+	creds, err := w.Client.credentialsCache.Get()
+	if err != nil {
+		w.log.Err(err).Msg("failed to get credentials")
+	}
 	v := map[string]string{
-		"Authorization": w.Client.credentials.TokenType + " " + w.Client.credentials.Token,
+		"Authorization": creds.TokenType + " " + creds.Token,
 		"Host":          w.url.Host,
 	}
 	vjson, err := json.Marshal(v)
@@ -205,11 +209,15 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 		w.log.Err(err).Msg("failed to marshal query")
 		return err
 	}
+	creds, err := w.Client.credentialsCache.Get()
+	if err != nil {
+		w.log.Err(err).Msg("failed to get credentials")
+	}
 	msg := graphql.BuildSubscribeMessage(graphql.SubscribeMessagePayload{
 		Data: string(jsonQuery),
 		Extensions: map[string]interface{}{
 			"authorization": map[string]string{
-				"Authorization": w.Client.credentials.TokenType + " " + w.Client.credentials.Token,
+				"Authorization": creds.TokenType + " " + creds.Token,
 				"host":          w.url.Host,
 			},
 		},

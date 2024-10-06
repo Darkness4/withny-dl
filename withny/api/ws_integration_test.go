@@ -23,7 +23,7 @@ func TestWebSocket(t *testing.T) {
 		Jar:     jar,
 		Timeout: time.Minute,
 	}
-	client := api.NewClient(hclient, &secret.UserPasswordFromEnv{})
+	client := api.NewClient(hclient, &secret.UserPasswordFromEnv{}, secret.NewTmpCache())
 	scraper := api.NewScraper(client)
 	wsURL, suuid, err := scraper.FindGraphQLAndStreamUUID(context.Background(), "admin")
 	require.NoError(t, err)

@@ -180,7 +180,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 	if config.CredentialsFile == "" {
 		log.Fatal().Msg("no credentials file configured")
 	}
-	client := api.NewClient(hclient, secret.NewReader(config.CredentialsFile))
+	client := api.NewClient(hclient, secret.NewReader(config.CredentialsFile), secret.NewTmpCache())
 
 	go func() {
 		if err := client.LoginLoop(ctx); err != nil {

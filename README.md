@@ -14,6 +14,7 @@ Automatically download withny livestream. Written in Go.
     - [Deployments (Kubernetes/Docker-Compose)](#deployments-kubernetesdocker-compose)
   - [Usage](#usage)
   - [Details](#details)
+    - [Token-based authentication](#token-based-authentication)
     - [About the concatenation and the cleaning routine](#about-the-concatenation-and-the-cleaning-routine)
     - [About metrics, traces and continuous profiling](#about-metrics-traces-and-continuous-profiling)
       - [Prometheus (Pull-based, metrics only)](#prometheus-pull-based-metrics-only)
@@ -154,7 +155,7 @@ Minimal configuration:
 username: 'your-username'
 password: 'your-password'
 
-# Or with token:
+# Or with token (instructions below):
 # token: "ey..."
 # refreshToken: "abc..."
 ```
@@ -457,6 +458,22 @@ notifier:
 ## Details
 
 The [config.yaml](config.yaml) file already includes a documentation for each field. This section will explain some of the fields in more detail.
+
+### Token-based authentication
+
+Because withny offers SSO, no password can be used to login. Instead, a token must be used. The token can be obtained in your browser by fetching the cookies:
+
+- `auth._refresh_token.local` (A 20-character string)
+- `auth._token.local` **without Bearer** (A JWT token, starting with `ey...`)
+
+![image-20241006150456727](./README.assets/image-20241006150456727.png)
+
+Now, let's talk about limitations:
+
+- The refresh token can **only** be used once. After that, the API will return an Unauthorized error. This means that the refresh token in the `credentials.yaml` file should be updated the moment you get an unauthorized error.
+- Obviously, this is not optimal, so **withny-dl will do it for you and cache it in the `/tmp/withny-dl.json`** file (with the right permissions). The cache is invalidated if the refresh token fails or is used. If it is invalidated, it will fallback to the `credentials.yaml` file. And if this fails too, the program will exit with an error. **The program will not be able to restart itself if the refresh token is invalid.**
+
+Therefore, it is **extremely recommended to setup a notification channel to be notified when the program stops**. You can find availables channel at [shoutrrr](https://containrrr.dev/shoutrrr/v0.8/services/discord/).
 
 ### About the concatenation and the cleaning routine
 

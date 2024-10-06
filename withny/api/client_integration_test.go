@@ -4,6 +4,7 @@ package api_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"testing"
@@ -47,7 +48,7 @@ func TestClient(t *testing.T) {
 	hclient := &http.Client{Jar: jar, Timeout: time.Minute}
 	credReader := &secret.UserPasswordFromEnv{}
 	saved, _ := credReader.Read()
-	client := api.NewClient(hclient, credReader)
+	client := api.NewClient(hclient, credReader, secret.NewTmpCache())
 
 	t.Run("Login with credentials", func(t *testing.T) {
 		res, err := client.LoginWithUserPassword(
@@ -60,6 +61,7 @@ func TestClient(t *testing.T) {
 		require.NotEmpty(t, res.Token)
 		require.NotEmpty(t, res.RefreshToken)
 		require.NotEmpty(t, res.TokenType)
+		fmt.Println(res)
 		require.Equal(t, "Bearer", res.TokenType)
 		require.NotEmpty(t, res.UserUUID)
 		time, err := res.GetExpirationTime()
@@ -116,7 +118,7 @@ func TestClient(t *testing.T) {
 				RefreshToken: res.RefreshToken,
 			},
 		}
-		client := api.NewClient(hclient, &static)
+		client := api.NewClient(hclient, &static, secret.NewTmpCache())
 		err = client.Login(context.Background())
 
 		// Assert
