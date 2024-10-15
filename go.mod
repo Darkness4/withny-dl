@@ -9,7 +9,7 @@ require (
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/gabriel-vasile/mimetype v1.4.5
+	github.com/gabriel-vasile/mimetype v1.4.6
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
