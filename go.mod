@@ -2,7 +2,7 @@ module github.com/Darkness4/withny-dl
 
 go 1.22.7
 
-toolchain go1.23.5
+toolchain go1.23.6
 
 require (
 	github.com/coder/websocket v1.8.12
