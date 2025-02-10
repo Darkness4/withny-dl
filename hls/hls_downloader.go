@@ -29,12 +29,59 @@ var (
 	ErrStreamEnded = errors.New("stream ended")
 )
 
+// HTTPError represents an HTTP error.
+type HTTPError struct {
+	Status int
+	Body   string
+	Method string
+	URL    string
+}
+
+// Error returns the error message.
+func (e HTTPError) Error() string {
+	return fmt.Sprintf("HTTP error %s %s, code=%d, body=%s", e.Method, e.URL, e.Status, e.Body)
+}
+
+// DownloaderOption is a function that configures a Downloader.
+type DownloaderOption func(*Downloader)
+
+// WithPacketLossMax sets the maximum number of packets that can be lost.
+func WithPacketLossMax(packetLossMax int) DownloaderOption {
+	return func(d *Downloader) {
+		d.packetLossMax = packetLossMax
+	}
+}
+
+// WithFragmentRetries sets the number of retries for each fragment.
+func WithFragmentRetries(fragmentRetries int) DownloaderOption {
+	return func(d *Downloader) {
+		d.fragmentRetries = fragmentRetries
+	}
+}
+
+// WithPlaylistRetries sets the number of retries for the playlist.
+func WithPlaylistRetries(playlistRetries int) DownloaderOption {
+	return func(d *Downloader) {
+		d.playlistRetries = playlistRetries
+	}
+}
+
+// WithLogger sets the logger for the Downloader.
+func WithLogger(log *zerolog.Logger) DownloaderOption {
+	return func(d *Downloader) {
+		d.log = log
+	}
+}
+
 // Downloader is used to download HLS streams.
 type Downloader struct {
 	*api.Client
-	packetLossMax int
-	log           *zerolog.Logger
-	url           string
+	packetLossMax   int
+	fragmentRetries int
+	playlistRetries int
+
+	log *zerolog.Logger
+	url string
 
 	// ready is used to notify that the downloader is running.
 	// This is to avoid stressing the users with warning logs.
@@ -44,80 +91,107 @@ type Downloader struct {
 // NewDownloader creates a new HLS downloader.
 func NewDownloader(
 	client *api.Client,
-	log *zerolog.Logger,
-	packetLossMax int,
 	url string,
+	opts ...DownloaderOption,
 ) *Downloader {
-
-	return &Downloader{
-		Client:        client,
-		packetLossMax: packetLossMax,
-		url:           url,
-		log:           log,
+	defaultLog := zerolog.Nop()
+	d := Downloader{
+		Client: client,
+		url:    url,
+		log:    &defaultLog,
 	}
+
+	for _, opt := range opts {
+		opt(&d)
+	}
+
+	return &d
 }
 
 // GetFragmentURLs fetches the fragment URLs from the HLS manifest.
 func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) {
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
-	if err != nil {
-		panic(err)
-	}
-	req.Header.Set(
-		"Accept",
-		"application/x-mpegURL, application/vnd.apple.mpegurl, application/json, text/plain",
-	)
-	req.Header.Set("Referer", "https://www.withny.fun/")
-	req.Header.Set("Origin", "https://www.withny.fun")
-
-	resp, err := hls.Client.Do(req)
-	if err != nil {
-		hls.log.Err(err).Msg("failed to fetch fragment URLs")
-		return []Fragment{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		url, _ := url.Parse(hls.url)
-
-		switch resp.StatusCode {
-		case 403:
-			hls.log.Error().
-				Str("url", url.String()).
-				Int("response.status", resp.StatusCode).
-				Str("response.body", string(body)).
-				Str("method", "GET").
-				Msg("http error")
-			metrics.Downloads.Errors.Add(ctx, 1)
-			return []Fragment{}, ErrHLSForbidden
-		case 404:
-			hls.log.Warn().
-				Str("url", url.String()).
-				Int("response.status", resp.StatusCode).
-				Str("response.body", string(body)).
-				Str("method", "GET").
-				Msg("stream is no more available")
-			return []Fragment{}, ErrStreamEnded
-		default:
-			hls.log.Error().
-				Str("url", url.String()).
-				Int("response.status", resp.StatusCode).
-				Str("response.body", string(body)).
-				Str("method", "GET").
-				Msg("http error")
-			metrics.Downloads.Errors.Add(ctx, 1)
-			return []Fragment{}, fmt.Errorf(
-				"http error: url=%s, status=%d, method=GET",
-				url.String(),
-				resp.StatusCode,
-			)
+	var respBody io.ReadCloser
+	var lastHTTPError HTTPError
+	var count int
+	for count = 0; count <= hls.playlistRetries; count++ {
+		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
+		if err != nil {
+			panic(err)
 		}
-	}
+		req.Header.Set(
+			"Accept",
+			"application/x-mpegURL, application/vnd.apple.mpegurl, application/json, text/plain",
+		)
+		req.Header.Set("Referer", "https://www.withny.fun/")
+		req.Header.Set("Origin", "https://www.withny.fun")
 
-	scanner := bufio.NewScanner(resp.Body)
+		resp, err := hls.Client.Do(req)
+		if err != nil {
+			hls.log.Err(err).Msg("failed to fetch fragment URLs")
+			return []Fragment{}, err
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			url, _ := url.Parse(hls.url)
+
+			switch resp.StatusCode {
+			case 403:
+				hls.log.Error().
+					Str("url", url.String()).
+					Int("response.status", resp.StatusCode).
+					Str("response.body", string(body)).
+					Str("method", "GET").
+					Msg("http error")
+				metrics.Downloads.Errors.Add(ctx, 1)
+				return []Fragment{}, ErrHLSForbidden
+			case 404:
+				hls.log.Warn().
+					Str("url", url.String()).
+					Int("response.status", resp.StatusCode).
+					Str("response.body", string(body)).
+					Str("method", "GET").
+					Msg("stream is no more available")
+				return []Fragment{}, ErrStreamEnded
+			default:
+				hls.log.Warn().
+					Str("url", lastHTTPError.URL).
+					Int("response.status", lastHTTPError.Status).
+					Str("response.body", lastHTTPError.Body).
+					Str("method", lastHTTPError.Method).
+					Int("count", count).
+					Int("playlistRetries", hls.playlistRetries).
+					Msg("http error, retrying")
+				lastHTTPError = HTTPError{
+					Status: resp.StatusCode,
+					Body:   string(body),
+					Method: "GET",
+					URL:    url.String(),
+				}
+				continue
+			}
+		}
+
+		respBody = resp.Body
+		break
+	}
+	if count > hls.playlistRetries {
+		hls.log.Error().
+			Str("url", lastHTTPError.URL).
+			Int("response.status", lastHTTPError.Status).
+			Str("response.body", lastHTTPError.Body).
+			Str("method", lastHTTPError.Method).
+			Int("playlistRetries", hls.playlistRetries).
+			Msg("giving up after too many http error")
+		metrics.Downloads.Errors.Add(ctx, 1)
+		return []Fragment{}, lastHTTPError
+	}
+	defer respBody.Close()
+
+	scanner := bufio.NewScanner(respBody)
 	fragments := make([]Fragment, 0, 10)
 	exists := make(map[string]bool) // Avoid duplicates
 
@@ -280,44 +354,71 @@ func (hls *Downloader) download(
 	w io.Writer,
 	url string,
 ) error {
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	req, err := hls.NewAuthRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		panic(err)
-	}
-	req.Header.Set("Referer", "https://www.withny.fun/")
-	req.Header.Set("Origin", "https://www.withny.fun")
-	resp, err := hls.Client.Do(req)
-	if err != nil {
-		hls.log.Err(err).Msg("failed to download fragment")
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		hls.log.Error().
-			Int("response.status", resp.StatusCode).
-			Str("response.body", string(body)).
-			Str("url", url).
-			Str("method", "GET").
-			Msg("http error")
-
-		if resp.StatusCode == 403 {
-			metrics.Downloads.Errors.Add(ctx, 1)
-			return ErrHLSForbidden
+	var respBody io.ReadCloser
+	var lastHTTPError HTTPError
+	var count int
+	for count = 0; count <= hls.fragmentRetries; count++ {
+		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		req, err := hls.NewAuthRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			panic(err)
+		}
+		req.Header.Set("Referer", "https://www.withny.fun/")
+		req.Header.Set("Origin", "https://www.withny.fun")
+		resp, err := hls.Client.Do(req)
+		if err != nil {
+			hls.log.Err(err).Msg("failed to download fragment")
+			return err
 		}
 
-		metrics.Downloads.Errors.Add(ctx, 1)
-		return fmt.Errorf(
-			"http error: url=%s, status=%d, method=GET",
-			url,
-			resp.StatusCode,
-		)
-	}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode == 403 {
+				hls.log.Error().
+					Int("response.status", resp.StatusCode).
+					Str("response.body", string(body)).
+					Str("url", url).
+					Str("method", "GET").
+					Msg("http error")
+				metrics.Downloads.Errors.Add(ctx, 1)
+				return ErrHLSForbidden
+			}
 
-	_, err = io.Copy(w, resp.Body)
+			hls.log.Warn().
+				Str("url", lastHTTPError.URL).
+				Int("response.status", lastHTTPError.Status).
+				Str("response.body", lastHTTPError.Body).
+				Str("method", lastHTTPError.Method).
+				Int("count", count).
+				Int("fragmentRetries", hls.fragmentRetries).
+				Msg("http error, retrying")
+			lastHTTPError = HTTPError{
+				Body:   string(body),
+				Status: resp.StatusCode,
+				Method: "GET",
+				URL:    url,
+			}
+			continue
+		}
+
+		respBody = resp.Body
+		break
+	}
+	if count > hls.fragmentRetries {
+		hls.log.Error().
+			Str("url", lastHTTPError.URL).
+			Int("response.status", lastHTTPError.Status).
+			Str("response.body", lastHTTPError.Body).
+			Str("method", lastHTTPError.Method).
+			Int("fragmentRetries", hls.fragmentRetries).
+			Msg("giving up after too many http error")
+		metrics.Downloads.Errors.Add(ctx, 1)
+		return lastHTTPError
+	}
+	defer respBody.Close()
+	_, err := io.Copy(w, respBody)
 	return err
 }
 

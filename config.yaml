@@ -51,6 +51,11 @@ defaultParams:
   outFormat: '{{ .ChannelID }} {{ .ChannelName }}/{{ .Date }} {{ .Title }}.{{ .Ext }}'
   ## Allow a maximum of packet loss before aborting stream download. (default: 20)
   packetLossMax: 20
+  ## How many times to retry to download a fragment upon an HTTP error before
+  ## increasing packetLoss counter.
+  fragmentRetries: 10
+  ## How many times to retry to download the m3u8 playlist upon an HTTP error.
+  playlistRetries: 10
   ## Save live chat into a json file. (default: false)
   writeChat: false
   ## Dump output MetaData into a json file. (default: false)

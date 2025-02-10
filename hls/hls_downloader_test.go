@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -288,9 +289,9 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 	)
 	suite.impl = NewDownloader(
 		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}, secret.NewTmpCache()),
-		&log.Logger,
-		10,
 		suite.server.URL,
+		WithPacketLossMax(10),
+		WithLogger(&log.Logger),
 	)
 }
 
@@ -308,6 +309,138 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLs() {
 	// Assert 2
 	suite.NoError(err)
 	suite.Equal(expectedFragments2, urls2)
+}
+
+func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
+	suite.T().Run("retry until failure", func(t *testing.T) {
+		// Arrange
+		suite.server = httptest.NewServer(
+			http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
+				res.WriteHeader(http.StatusInternalServerError)
+			}),
+		)
+		suite.impl = NewDownloader(
+			api.NewClient(
+				suite.server.Client(),
+				secret.UserPasswordFromEnv{},
+				secret.NewTmpCache(),
+			),
+			suite.server.URL,
+			WithPlaylistRetries(2),
+			WithLogger(&log.Logger),
+		)
+
+		// Act
+		urls, err := suite.impl.GetFragmentURLs(context.Background())
+
+		// Assert
+		suite.ErrorIs(err, HTTPError{
+			Body:   "",
+			Status: http.StatusInternalServerError,
+			Method: "GET",
+			URL:    suite.server.URL,
+		})
+		suite.Equal(0, len(urls))
+	})
+
+	suite.T().Run("retry until found", func(t *testing.T) {
+		// Arrange
+		suite.counter = 0
+		suite.server = httptest.NewServer(
+			http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
+				if suite.counter < 2 {
+					res.WriteHeader(http.StatusInternalServerError)
+				} else {
+					res.Write(fixture1)
+				}
+				suite.counter++
+			}),
+		)
+		suite.impl = NewDownloader(
+			api.NewClient(
+				suite.server.Client(),
+				secret.UserPasswordFromEnv{},
+				secret.NewTmpCache(),
+			),
+			suite.server.URL,
+			WithPlaylistRetries(3),
+			WithLogger(&log.Logger),
+		)
+
+		// Act
+		urls, err := suite.impl.GetFragmentURLs(context.Background())
+
+		// Assert
+		suite.NoError(err)
+		suite.Equal(expectedFragments, urls)
+	})
+}
+
+func (suite *DownloaderTestSuite) TestDownload() {
+	suite.T().Run("retry until failure", func(t *testing.T) {
+		// Arrange
+		suite.server = httptest.NewServer(
+			http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
+				res.WriteHeader(http.StatusInternalServerError)
+			}),
+		)
+		suite.impl = NewDownloader(
+			api.NewClient(
+				suite.server.Client(),
+				secret.UserPasswordFromEnv{},
+				secret.NewTmpCache(),
+			),
+			suite.server.URL,
+			WithFragmentRetries(2),
+			WithLogger(&log.Logger),
+		)
+
+		// Act
+		out := new(strings.Builder)
+		err := suite.impl.download(context.Background(), out, suite.server.URL)
+
+		// Assert
+		suite.ErrorIs(err, HTTPError{
+			Body:   "",
+			Status: http.StatusInternalServerError,
+			Method: "GET",
+			URL:    suite.server.URL,
+		})
+		suite.Equal(0, out.Len())
+	})
+
+	suite.T().Run("retry until found", func(t *testing.T) {
+		// Arrange
+		suite.counter = 0
+		suite.server = httptest.NewServer(
+			http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
+				if suite.counter < 2 {
+					res.WriteHeader(http.StatusInternalServerError)
+				} else {
+					res.Write([]byte("data"))
+				}
+				suite.counter++
+			}),
+		)
+		suite.impl = NewDownloader(
+			api.NewClient(
+				suite.server.Client(),
+				secret.UserPasswordFromEnv{},
+				secret.NewTmpCache(),
+			),
+			suite.server.URL,
+			WithFragmentRetries(3),
+			WithLogger(&log.Logger),
+		)
+
+		// Act
+		out := new(strings.Builder)
+		err := suite.impl.download(context.Background(), out, suite.server.URL)
+
+		// Assert
+		suite.NoError(err)
+		suite.Equal("data", out.String())
+	})
 }
 
 func (suite *DownloaderTestSuite) TestFillQueue() {
@@ -365,9 +498,9 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 	)
 	suite.impl = NewDownloader(
 		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}, secret.NewTmpCache()),
-		&log.Logger,
-		10,
 		suite.server.URL,
+		WithPacketLossMax(10),
+		WithLogger(&log.Logger),
 	)
 }
 

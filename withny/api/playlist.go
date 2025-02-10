@@ -5,6 +5,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	_ "embed"
 )
 
 // Playlist represents a stream in an M3U8 playlist.
