@@ -312,7 +312,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLs() {
 }
 
 func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
-	suite.T().Run("retry until failure", func(t *testing.T) {
+	suite.Run("retry until failure", func() {
 		// Arrange
 		suite.server = httptest.NewServer(
 			http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
@@ -343,7 +343,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 		suite.Equal(0, len(urls))
 	})
 
-	suite.T().Run("retry until found", func(t *testing.T) {
+	suite.Run("retry until found", func() {
 		// Arrange
 		suite.counter = 0
 		suite.server = httptest.NewServer(
@@ -351,7 +351,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 				if suite.counter < 2 {
 					res.WriteHeader(http.StatusInternalServerError)
 				} else {
-					res.Write(fixture1)
+					_, _ = res.Write(fixture1)
 				}
 				suite.counter++
 			}),
@@ -377,7 +377,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 }
 
 func (suite *DownloaderTestSuite) TestDownload() {
-	suite.T().Run("retry until failure", func(t *testing.T) {
+	suite.Run("retry until failure", func() {
 		// Arrange
 		suite.server = httptest.NewServer(
 			http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
@@ -409,7 +409,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 		suite.Equal(0, out.Len())
 	})
 
-	suite.T().Run("retry until found", func(t *testing.T) {
+	suite.Run("retry until found", func() {
 		// Arrange
 		suite.counter = 0
 		suite.server = httptest.NewServer(
@@ -417,7 +417,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 				if suite.counter < 2 {
 					res.WriteHeader(http.StatusInternalServerError)
 				} else {
-					res.Write([]byte("data"))
+					_, _ = res.Write([]byte("data"))
 				}
 				suite.counter++
 			}),

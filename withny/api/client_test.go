@@ -48,7 +48,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 				if counter < 3 {
 					res.WriteHeader(http.StatusInternalServerError)
 				} else {
-					res.Write([]byte(fixture))
+					_, _ = res.Write([]byte(fixture))
 				}
 				counter++
 			}),
