@@ -171,20 +171,20 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 					Int("playlistRetries", hls.playlistRetries).
 					Msg("http error, retrying")
 				continue
-			} else {
-				hls.log.Error().
-					Str("url", url.String()).
-					Int("response.status", resp.StatusCode).
-					Str("response.body", string(body)).
-					Str("method", "GET").
-					Msg("http error")
-				metrics.Downloads.Errors.Add(ctx, 1)
-				return []Fragment{}, HTTPError{
-					Status: resp.StatusCode,
-					Body:   string(body),
-					Method: "GET",
-					URL:    url.String(),
-				}
+			}
+
+			hls.log.Error().
+				Str("url", url.String()).
+				Int("response.status", resp.StatusCode).
+				Str("response.body", string(body)).
+				Str("method", "GET").
+				Msg("http error")
+			metrics.Downloads.Errors.Add(ctx, 1)
+			return []Fragment{}, HTTPError{
+				Status: resp.StatusCode,
+				Body:   string(body),
+				Method: "GET",
+				URL:    url.String(),
 			}
 		}
 
