@@ -577,21 +577,37 @@ func (c *Client) GetPlaylists(
 		if res.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(res.Body)
 			res.Body.Close()
+
+			if res.StatusCode >= 500 && res.StatusCode < 600 {
+				lastHTTPError = HTTPError{
+					Status: res.StatusCode,
+					Body:   string(body),
+					Method: req.Method,
+					URL:    req.URL.String(),
+				}
+				log.Error().
+					Str("url", lastHTTPError.URL).
+					Int("response.status", lastHTTPError.Status).
+					Str("response.body", lastHTTPError.Body).
+					Str("method", lastHTTPError.Method).
+					Int("count", count).
+					Int("playlistRetries", playlistRetries).
+					Msg("http error, retrying")
+				continue
+			}
+
 			log.Error().
-				Str("url", lastHTTPError.URL).
-				Int("response.status", lastHTTPError.Status).
-				Str("response.body", string(lastHTTPError.Body)).
+				Str("url", req.URL.String()).
+				Int("response.status", res.StatusCode).
+				Str("response.body", string(body)).
 				Str("method", req.Method).
-				Int("count", count).
-				Int("playlistRetries", playlistRetries).
-				Msg("http error, retrying")
-			lastHTTPError = HTTPError{
+				Msg("http error")
+			return nil, HTTPError{
 				Status: res.StatusCode,
 				Body:   string(body),
 				Method: req.Method,
 				URL:    req.URL.String(),
 			}
-			continue
 		}
 
 		respBody = res.Body
@@ -601,7 +617,7 @@ func (c *Client) GetPlaylists(
 		log.Error().
 			Str("url", lastHTTPError.URL).
 			Int("response.status", lastHTTPError.Status).
-			Str("response.body", string(lastHTTPError.Body)).
+			Str("response.body", lastHTTPError.Body).
 			Str("method", req.Method).
 			Int("playlistRetries", playlistRetries).
 			Msg("giving up after too many http error")

@@ -138,8 +138,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 			resp.Body.Close()
 			url, _ := url.Parse(hls.url)
 
-			switch resp.StatusCode {
-			case 403:
+			if resp.StatusCode == 403 {
 				hls.log.Error().
 					Str("url", url.String()).
 					Int("response.status", resp.StatusCode).
@@ -148,7 +147,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 					Msg("http error")
 				metrics.Downloads.Errors.Add(ctx, 1)
 				return []Fragment{}, ErrHLSForbidden
-			case 404:
+			} else if resp.StatusCode == 404 {
 				hls.log.Warn().
 					Str("url", url.String()).
 					Int("response.status", resp.StatusCode).
@@ -156,7 +155,13 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 					Str("method", "GET").
 					Msg("stream is no more available")
 				return []Fragment{}, ErrStreamEnded
-			default:
+			} else if resp.StatusCode >= 500 && resp.StatusCode < 600 {
+				lastHTTPError = HTTPError{
+					Status: resp.StatusCode,
+					Body:   string(body),
+					Method: "GET",
+					URL:    url.String(),
+				}
 				hls.log.Warn().
 					Str("url", lastHTTPError.URL).
 					Int("response.status", lastHTTPError.Status).
@@ -165,13 +170,21 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 					Int("count", count).
 					Int("playlistRetries", hls.playlistRetries).
 					Msg("http error, retrying")
-				lastHTTPError = HTTPError{
+				continue
+			} else {
+				hls.log.Error().
+					Str("url", url.String()).
+					Int("response.status", resp.StatusCode).
+					Str("response.body", string(body)).
+					Str("method", "GET").
+					Msg("http error")
+				metrics.Downloads.Errors.Add(ctx, 1)
+				return []Fragment{}, HTTPError{
 					Status: resp.StatusCode,
 					Body:   string(body),
 					Method: "GET",
 					URL:    url.String(),
 				}
-				continue
 			}
 		}
 
@@ -384,23 +397,37 @@ func (hls *Downloader) download(
 					Msg("http error")
 				metrics.Downloads.Errors.Add(ctx, 1)
 				return ErrHLSForbidden
+			} else if resp.StatusCode >= 500 && resp.StatusCode < 600 {
+				lastHTTPError = HTTPError{
+					Body:   string(body),
+					Status: resp.StatusCode,
+					Method: "GET",
+					URL:    url,
+				}
+				hls.log.Warn().
+					Str("url", lastHTTPError.URL).
+					Int("response.status", lastHTTPError.Status).
+					Str("response.body", lastHTTPError.Body).
+					Str("method", lastHTTPError.Method).
+					Int("count", count).
+					Int("fragmentRetries", hls.fragmentRetries).
+					Msg("http error, retrying")
+				continue
 			}
 
-			hls.log.Warn().
-				Str("url", lastHTTPError.URL).
-				Int("response.status", lastHTTPError.Status).
-				Str("response.body", lastHTTPError.Body).
-				Str("method", lastHTTPError.Method).
-				Int("count", count).
-				Int("fragmentRetries", hls.fragmentRetries).
-				Msg("http error, retrying")
-			lastHTTPError = HTTPError{
+			hls.log.Error().
+				Str("url", url).
+				Int("response.status", resp.StatusCode).
+				Str("response.body", string(body)).
+				Str("method", "GET").
+				Msg("http error")
+			metrics.Downloads.Errors.Add(ctx, 1)
+			return HTTPError{
 				Body:   string(body),
 				Status: resp.StatusCode,
 				Method: "GET",
 				URL:    url,
 			}
-			continue
 		}
 
 		respBody = resp.Body
