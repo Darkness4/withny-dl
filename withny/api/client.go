@@ -28,15 +28,17 @@ const (
 	streamPlaybackURL   = streamsURL + "/%s/playback-url"
 )
 
-// ServerError is an error given by the withny server.
-type ServerError struct {
+// HTTPError represents an HTTP error.
+type HTTPError struct {
 	Status int
 	Body   string
+	Method string
+	URL    string
 }
 
 // Error returns the error message.
-func (e ServerError) Error() string {
-	return fmt.Sprintf("server error, code=%d, body=%s", e.Status, e.Body)
+func (e HTTPError) Error() string {
+	return fmt.Sprintf("HTTP error %s %s, code=%d, body=%s", e.Method, e.URL, e.Status, e.Body)
 }
 
 // GetPlaybackURLError is an error given by the GetStreamPlaybackURL API.
@@ -252,9 +254,11 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
-			return GetUserResponse{}, ServerError{
+			return GetUserResponse{}, HTTPError{
 				Status: res.StatusCode,
 				Body:   string(body),
+				Method: req.Method,
+				URL:    req.URL.String(),
 			}
 		}
 		return GetUserResponse{}, err
@@ -309,9 +313,11 @@ func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsRe
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
-			return GetStreamsResponse{}, ServerError{
+			return GetStreamsResponse{}, HTTPError{
 				Status: res.StatusCode,
 				Body:   string(body),
+				Method: req.Method,
+				URL:    req.URL.String(),
 			}
 		}
 		return GetStreamsResponse{}, err
@@ -374,9 +380,11 @@ func (c *Client) LoginWithRefreshToken(
 			Str("refreshToken", refreshToken).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
-			return Credentials{}, ServerError{
+			return Credentials{}, HTTPError{
 				Status: res.StatusCode,
 				Body:   string(body),
+				Method: req.Method,
+				URL:    req.URL.String(),
 			}
 		}
 		return Credentials{}, err
@@ -435,9 +443,11 @@ func (c *Client) LoginWithUserPassword(
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
-			return Credentials{}, ServerError{
+			return Credentials{}, HTTPError{
 				Status: res.StatusCode,
 				Body:   string(body),
+				Method: req.Method,
+				URL:    req.URL.String(),
 			}
 		}
 		return Credentials{}, err
@@ -506,7 +516,12 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 			Int("status", res.StatusCode).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
-			return "", ServerError{Status: res.StatusCode, Body: string(body)}
+			return "", HTTPError{
+				Status: res.StatusCode,
+				Body:   string(body),
+				Method: req.Method,
+				URL:    req.URL.String(),
+			}
 		}
 		return "", err
 	}
@@ -522,7 +537,11 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 }
 
 // GetPlaylists will fetch the playlists from the given playbackURL.
-func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playlist, error) {
+func (c *Client) GetPlaylists(
+	ctx context.Context,
+	playbackURL string,
+	playlistRetries int,
+) ([]Playlist, error) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -545,30 +564,68 @@ func (c *Client) GetPlaylists(ctx context.Context, playbackURL string) ([]Playli
 		Str("url", playbackURL).
 		Logger()
 
-	res, err := c.Do(req)
-	if err != nil {
-		log.Err(err).Msg("failed to get playlists")
-		return nil, err
-	}
-	defer res.Body.Close()
+	var respBody io.ReadCloser
+	var lastHTTPError HTTPError
+	var count int
+	for count = 0; count <= playlistRetries; count++ {
+		res, err := c.Do(req)
+		if err != nil {
+			log.Err(err).Msg("failed to get playlists")
+			return nil, err
+		}
 
-	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
-		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
-		log.Err(err).
-			Str("response", string(body)).
-			Int("status", res.StatusCode).
-			Msg("unexpected status code")
-		if res.StatusCode >= http.StatusInternalServerError {
-			return nil, ServerError{
+		if res.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+
+			if res.StatusCode >= 500 && res.StatusCode < 600 {
+				lastHTTPError = HTTPError{
+					Status: res.StatusCode,
+					Body:   string(body),
+					Method: req.Method,
+					URL:    req.URL.String(),
+				}
+				log.Error().
+					Str("url", lastHTTPError.URL).
+					Int("response.status", lastHTTPError.Status).
+					Str("response.body", lastHTTPError.Body).
+					Str("method", lastHTTPError.Method).
+					Int("count", count).
+					Int("playlistRetries", playlistRetries).
+					Msg("http error, retrying")
+				continue
+			}
+
+			log.Error().
+				Str("url", req.URL.String()).
+				Int("response.status", res.StatusCode).
+				Str("response.body", string(body)).
+				Str("method", req.Method).
+				Msg("http error")
+			return nil, HTTPError{
 				Status: res.StatusCode,
 				Body:   string(body),
+				Method: req.Method,
+				URL:    req.URL.String(),
 			}
 		}
-		return nil, err
-	}
 
-	return ParseM3U8(res.Body), nil
+		respBody = res.Body
+		break
+	}
+	if count > playlistRetries {
+		log.Error().
+			Str("url", lastHTTPError.URL).
+			Int("response.status", lastHTTPError.Status).
+			Str("response.body", lastHTTPError.Body).
+			Str("method", req.Method).
+			Int("playlistRetries", playlistRetries).
+			Msg("giving up after too many http error")
+		return nil, lastHTTPError
+	}
+	defer respBody.Close()
+
+	return ParseM3U8(respBody), nil
 }
 
 // LoginLoop will login to withny and refresh the token when needed.

@@ -37,7 +37,7 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	defer span.End()
 
 	// Fetch playlist
-	playlists, err := client.GetPlaylists(ctx, ls.PlaybackURL)
+	playlists, err := client.GetPlaylists(ctx, ls.PlaybackURL, 0)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -67,9 +67,11 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 
 		downloader = hls.NewDownloader(
 			client,
-			log,
-			ls.Params.PacketLossMax,
 			playlist.URL,
+			hls.WithPacketLossMax(ls.Params.PacketLossMax),
+			hls.WithFragmentRetries(ls.Params.FragmentRetries),
+			hls.WithPlaylistRetries(ls.Params.PlaylistRetries),
+			hls.WithLogger(log),
 		)
 
 		if ok, err := try.DoWithResult(5, 5*time.Second, func() (bool, error) {

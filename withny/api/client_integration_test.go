@@ -186,7 +186,7 @@ func TestClient(t *testing.T) {
 		playbackURL, err := client.GetStreamPlaybackURL(context.Background(), streams[0].UUID)
 		require.NoError(t, err)
 
-		playlists, err := client.GetPlaylists(context.Background(), playbackURL)
+		playlists, err := client.GetPlaylists(context.Background(), playbackURL, 0)
 
 		// Assert
 		require.NoError(t, err)

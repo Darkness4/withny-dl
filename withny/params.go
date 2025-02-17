@@ -11,6 +11,8 @@ import (
 type Params struct {
 	QualityConstraint      api.PlaylistConstraint `yaml:"quality,omitempty"`
 	PacketLossMax          int                    `yaml:"packetLossMax,omitempty"`
+	FragmentRetries        int                    `yaml:"fragmentRetries,omitempty"`
+	PlaylistRetries        int                    `yaml:"playlistRetries,omitempty"`
 	OutFormat              string                 `yaml:"outFormat,omitempty"`
 	WriteChat              bool                   `yaml:"writeChat,omitempty"`
 	WriteMetaDataJSON      bool                   `yaml:"writeMetaDataJson,omitempty"`
@@ -37,6 +39,8 @@ func (p *Params) String() string {
 type OptionalParams struct {
 	QualityConstraint      *api.PlaylistConstraint `yaml:"quality,omitempty"`
 	PacketLossMax          *int                    `yaml:"packetLossMax,omitempty"`
+	FragmentRetries        *int                    `yaml:"fragmentRetries,omitempty"`
+	PlaylistRetries        *int                    `yaml:"playlistRetries,omitempty"`
 	OutFormat              *string                 `yaml:"outFormat,omitempty"`
 	WriteChat              *bool                   `yaml:"writeChat,omitempty"`
 	WriteMetaDataJSON      *bool                   `yaml:"writeMetaDataJson,omitempty"`
@@ -58,6 +62,8 @@ type OptionalParams struct {
 var DefaultParams = Params{
 	QualityConstraint:      api.PlaylistConstraint{},
 	PacketLossMax:          20,
+	FragmentRetries:        10,
+	PlaylistRetries:        10,
 	OutFormat:              "{{ .Date }} {{ .Title }} ({{ .ChannelName }}).{{ .Ext }}",
 	WriteChat:              false,
 	WriteMetaDataJSON:      false,
@@ -82,6 +88,12 @@ func (override *OptionalParams) Override(params *Params) {
 	}
 	if override.PacketLossMax != nil {
 		params.PacketLossMax = *override.PacketLossMax
+	}
+	if override.FragmentRetries != nil {
+		params.FragmentRetries = *override.FragmentRetries
+	}
+	if override.PlaylistRetries != nil {
+		params.PlaylistRetries = *override.PlaylistRetries
 	}
 	if override.OutFormat != nil {
 		params.OutFormat = *override.OutFormat
@@ -141,6 +153,8 @@ func (p *Params) Clone() *Params {
 	clone := Params{
 		QualityConstraint:      p.QualityConstraint,
 		PacketLossMax:          p.PacketLossMax,
+		FragmentRetries:        p.FragmentRetries,
+		PlaylistRetries:        p.PlaylistRetries,
 		OutFormat:              p.OutFormat,
 		WriteChat:              p.WriteChat,
 		WriteMetaDataJSON:      p.WriteMetaDataJSON,
