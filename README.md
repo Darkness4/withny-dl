@@ -464,7 +464,7 @@ Because withny offers SSO, no password can be used to login. Instead, a token mu
 - `auth._refresh_token.local` (A 20-character string)
 - `auth._token.local` **without Bearer** (A JWT token, starting with `ey...`)
 
-You can fetch these cookies by opening the inspector (Application tab):
+You can fetch these cookies by opening the [inspector tools](https://developer.chrome.com/docs/devtools/application/cookies) (Application tab):
 
 ![image-20250309150814029](./README.assets/image-20250309150814029.png)
 
