@@ -160,6 +160,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 
 	switch {
 	case cachedCreds.Token != "":
+		c.SetCredentials(cachedCreds)
 		creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
 		if err != nil {
 			log.Err(err).Msg("failed to refresh token from cache, will use provided credentials")
