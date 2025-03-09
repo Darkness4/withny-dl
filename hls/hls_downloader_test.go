@@ -288,7 +288,7 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 		}),
 	)
 	suite.impl = NewDownloader(
-		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}, secret.NewTmpCache()),
+		api.NewClient(suite.server.Client(), secret.CredentialsFromEnv{}, secret.NewTmpCache()),
 		suite.server.URL,
 		WithPacketLossMax(10),
 		WithLogger(&log.Logger),
@@ -322,7 +322,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
-				secret.UserPasswordFromEnv{},
+				secret.CredentialsFromEnv{},
 				secret.NewTmpCache(),
 			),
 			suite.server.URL,
@@ -359,7 +359,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
-				secret.UserPasswordFromEnv{},
+				secret.CredentialsFromEnv{},
 				secret.NewTmpCache(),
 			),
 			suite.server.URL,
@@ -387,7 +387,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
-				secret.UserPasswordFromEnv{},
+				secret.CredentialsFromEnv{},
 				secret.NewTmpCache(),
 			),
 			suite.server.URL,
@@ -425,7 +425,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
-				secret.UserPasswordFromEnv{},
+				secret.CredentialsFromEnv{},
 				secret.NewTmpCache(),
 			),
 			suite.server.URL,
@@ -497,7 +497,7 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 		}),
 	)
 	suite.impl = NewDownloader(
-		api.NewClient(suite.server.Client(), secret.UserPasswordFromEnv{}, secret.NewTmpCache()),
+		api.NewClient(suite.server.Client(), secret.CredentialsFromEnv{}, secret.NewTmpCache()),
 		suite.server.URL,
 		WithPacketLossMax(10),
 		WithLogger(&log.Logger),

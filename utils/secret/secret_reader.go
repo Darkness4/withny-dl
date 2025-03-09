@@ -45,13 +45,13 @@ func (s *Reader) Read() (api.SavedCredentials, error) {
 	return creds, err
 }
 
-var _ api.CredentialsReader = (*UserPasswordFromEnv)(nil)
+var _ api.CredentialsReader = (*CredentialsFromEnv)(nil)
 
-// UserPasswordFromEnv is a user password reader from the environment.
-type UserPasswordFromEnv struct{}
+// CredentialsFromEnv is a user password reader from the environment.
+type CredentialsFromEnv struct{}
 
 // Read returns the email and password from the environment.
-func (UserPasswordFromEnv) Read() (api.SavedCredentials, error) {
+func (CredentialsFromEnv) Read() (api.SavedCredentials, error) {
 	return api.SavedCredentials{
 		Username:     os.Getenv("WITHNY_USERNAME"),
 		Password:     os.Getenv("WITHNY_PASSWORD"),

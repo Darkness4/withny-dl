@@ -4,10 +4,14 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
+
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/Darkness4/withny-dl/withny/api"
 )
@@ -21,76 +25,82 @@ var (
 	)
 )
 
-// EncryptWriter implements io.Writer interface and writes encrypted data.
-type EncryptWriter struct {
-	writer io.Writer
-	stream cipher.Stream
+const saltSize = 16
+
+// DeriveKey derives a 32-byte AES key from the secret key using PBKDF2.
+func deriveKey(secret []byte) []byte {
+	// PBKDF2 is used to derive a key from the secret key
+	salt := make([]byte, saltSize) // You can use a random salt in production
+	return pbkdf2.Key(secret, salt, 100000, 32, sha256.New)
 }
 
-// NewEncryptWriter initializes an EncryptWriter with a CFB stream cipher.
-func NewEncryptWriter(w io.Writer, key []byte) (*EncryptWriter, error) {
+// Encrypt creates a new EncryptWriter.
+func Encrypt(w io.Writer, secret []byte, plaintext []byte) error {
+	// Derive the key from the secret
+	key := deriveKey(secret)
+
+	// Create AES cipher
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("cannot create cipher: %v", err)
 	}
 
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, err
+	// Create GCM cipher
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return fmt.Errorf("cannot create GCM cipher: %v", err)
 	}
 
-	// Write IV to the writer first
-	if _, err := w.Write(iv); err != nil {
-		return nil, err
+	// Generate nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return fmt.Errorf("cannot generate nonce: %v", err)
 	}
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	return &EncryptWriter{
-		writer: w,
-		stream: stream,
-	}, nil
+	// Storing the nonce in the ciphertext since we have no storage.
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+
+	_, err = w.Write(ciphertext)
+	return err
 }
 
-// Write encrypts the data and writes it to the underlying writer.
-func (ew *EncryptWriter) Write(p []byte) (n int, err error) {
-	encrypted := make([]byte, len(p))
-	ew.stream.XORKeyStream(encrypted, p)
-	return ew.writer.Write(encrypted)
-}
+// Decrypt reads the encrypted data from the reader and returns the decrypted data.
+func Decrypt(r io.Reader, secret []byte) ([]byte, error) {
+	// Derive the key from the secret
+	key := deriveKey(secret)
 
-// DecryptReader implements io.Reader interface and reads decrypted data.
-type DecryptReader struct {
-	reader io.Reader
-	stream cipher.Stream
-}
-
-// NewDecryptReader initializes a DecryptReader with a CFB stream cipher.
-func NewDecryptReader(r io.Reader, key []byte) (*DecryptReader, error) {
+	// Create AES cipher
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot create AES cipher: %v", err)
 	}
 
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(r, iv); err != nil {
-		return nil, err
-	}
-
-	stream := cipher.NewCFBDecrypter(block, iv)
-	return &DecryptReader{
-		reader: r,
-		stream: stream,
-	}, nil
-}
-
-// Read decrypts the data and reads it from the underlying reader.
-func (dr *DecryptReader) Read(p []byte) (n int, err error) {
-	n, err = dr.reader.Read(p)
+	// Create GCM cipher
+	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return n, err
+		return nil, fmt.Errorf("cannot create GCM cipher: %v", err)
 	}
-	dr.stream.XORKeyStream(p[:n], p[:n])
-	return n, nil
+
+	// Read the nonce from the reader (it will be the first part of the encrypted data)
+	nonce := make([]byte, gcm.NonceSize())
+	_, err = io.ReadFull(r, nonce)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read nonce: %v", err)
+	}
+
+	// Read the ciphertext from the reader
+	ciphertext, err := io.ReadAll(r)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("cannot read ciphertext: %v", err)
+	}
+
+	// Decrypt the data
+	plainText, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decrypt data: %v", err)
+	}
+
+	return plainText, nil
 }
 
 // FileCache is a secret cache that reads from a file.
@@ -125,12 +135,12 @@ func (f *FileCache) Get() (api.Credentials, error) {
 	}
 	defer file.Close()
 
-	decryptReader, err := NewDecryptReader(file, hardcodedSecret)
+	decrypted, err := Decrypt(file, hardcodedSecret)
 	if err != nil {
 		return creds, err
 	}
 
-	if err := json.NewDecoder(decryptReader).Decode(&creds); err != nil {
+	if err := json.Unmarshal(decrypted, &creds); err != nil {
 		return creds, err
 	}
 
@@ -146,12 +156,12 @@ func (f *FileCache) Set(creds api.Credentials) error {
 	defer file.Close()
 
 	// Encrypt the JSON data and write it to the writer
-	encryptWriter, err := NewEncryptWriter(file, hardcodedSecret)
+	decrypted, err := json.Marshal(creds)
 	if err != nil {
 		return err
 	}
 
-	return json.NewEncoder(encryptWriter).Encode(creds)
+	return Encrypt(file, hardcodedSecret, decrypted)
 }
 
 // Invalidate removes the credentials file.

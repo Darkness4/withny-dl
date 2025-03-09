@@ -4,7 +4,6 @@ package api_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"testing"
@@ -46,14 +45,26 @@ func TestClient(t *testing.T) {
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	require.NoError(t, err)
 	hclient := &http.Client{Jar: jar, Timeout: time.Minute}
-	credReader := &secret.UserPasswordFromEnv{}
+	credReader := &secret.CredentialsFromEnv{}
 	saved, _ := credReader.Read()
 	client := api.NewClient(hclient, credReader, secret.NewTmpCache())
 
-	t.Run("Login with credentials", func(t *testing.T) {
-		res, err := client.LoginWithUserPassword(
+	t.Run("Login with refresh token", func(t *testing.T) {
+		// Act
+		newCredentials := api.Credentials{
+			LoginResponse: api.LoginResponse{
+				Token:        saved.Token,
+				RefreshToken: saved.RefreshToken,
+				TokenType:    "Bearer",
+			},
+		}
+		client.SetCredentials(newCredentials)
+
+		require.NoError(t, err)
+		time.Sleep(2 * time.Second)
+		res, err := client.LoginWithRefreshToken(
 			context.Background(),
-			saved.Username, saved.Password,
+			saved.RefreshToken,
 		)
 
 		// Assert
@@ -61,62 +72,18 @@ func TestClient(t *testing.T) {
 		require.NotEmpty(t, res.Token)
 		require.NotEmpty(t, res.RefreshToken)
 		require.NotEmpty(t, res.TokenType)
-		fmt.Println(res)
 		require.Equal(t, "Bearer", res.TokenType)
 		require.NotEmpty(t, res.UserUUID)
+		require.NoError(t, err)
 		time, err := res.GetExpirationTime()
 		require.NoError(t, err)
 		require.NotZero(t, time.Time)
-	})
-
-	t.Run("Login with refresh token", func(t *testing.T) {
-		// Act
-		res, err := client.LoginWithUserPassword(
-			context.Background(),
-			saved.Username, saved.Password,
-		)
-		require.NoError(t, err)
-		client.SetCredentials(res)
-		time.Sleep(2 * time.Second)
-		res2, err := client.LoginWithRefreshToken(
-			context.Background(),
-			res.RefreshToken,
-		)
-
-		// Assert
-		require.NoError(t, err)
-		require.NotEmpty(t, res2.Token)
-		require.NotEqual(t, res.Token, res2.Token)
-		require.NotEmpty(t, res2.RefreshToken)
-		require.NotEqual(t, res.RefreshToken, res2.RefreshToken)
-		require.NotEmpty(t, res2.TokenType)
-		require.Equal(t, "Bearer", res2.TokenType)
-		require.NotEmpty(t, res2.UserUUID)
-		require.Equal(t, res.UserUUID, res2.UserUUID)
-		time, err := res.GetExpirationTime()
-		require.NoError(t, err)
-		require.NotZero(t, time.Time)
-		time2, err := res2.GetExpirationTime()
-		require.NoError(t, err)
-		require.NotZero(t, time2.Time)
-		require.Greater(t, time2.Time.Unix(), time.Time.Unix())
 	})
 
 	t.Run("Token-based authentication", func(t *testing.T) {
 		// Act
-		res, err := client.LoginWithUserPassword(
-			context.Background(),
-			saved.Username, saved.Password,
-		)
-		require.NoError(t, err)
-
-		time.Sleep(2 * time.Second)
-
 		static := secret.Static{
-			SavedCredentials: api.SavedCredentials{
-				Token:        res.Token,
-				RefreshToken: res.RefreshToken,
-			},
+			SavedCredentials: saved,
 		}
 		client := api.NewClient(hclient, &static, secret.NewTmpCache())
 		err = client.Login(context.Background())

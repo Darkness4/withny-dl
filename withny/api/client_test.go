@@ -23,7 +23,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 		)
 		impl := api.NewClient(
 			server.Client(),
-			secret.UserPasswordFromEnv{},
+			secret.CredentialsFromEnv{},
 			secret.NewTmpCache(),
 		)
 
@@ -55,7 +55,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 		)
 		impl := api.NewClient(
 			server.Client(),
-			secret.UserPasswordFromEnv{},
+			secret.CredentialsFromEnv{},
 			secret.NewTmpCache(),
 		)
 

@@ -111,10 +111,9 @@ You can customize FFmpeg by editing [Dockerfile.windows-base](https://github.com
 
 The build system is MXE.
 
-
 ### Install from source (~16MB)
 
-*Binary size doesn't include ffmpeg linked libraries.*
+_Binary size doesn't include ffmpeg linked libraries._
 
 See [BUILD.md](BUILD.md).
 
@@ -152,12 +151,11 @@ To configure the watcher, you must provide a configuration file. The configurati
 Minimal configuration:
 
 ```yaml
-username: 'your-username'
-password: 'your-password'
-
-# Or with token (instructions below):
-# token: "ey..."
-# refreshToken: "abc..."
+# See below for more details.
+token: 'ey...'
+refreshToken: 'abc...'
+## Login by username and password is obsolete and will no longer be supported
+## due to Withny added captcha.
 ```
 
 ```yaml
@@ -190,18 +188,13 @@ channels:
 
 <summary>Configuration Full</summary>
 
-```yaml
+````yaml
 ---
 ## [REQUIRED] Path to the file containing the credentials. (default: '')
 ##
 ## Example of content:
 ##
 ## ```yaml
-## # User/Password-based
-## username: admin
-## password: password
-##
-## # Token-based
 ## token: "ey..."
 ## refreshToken: "abc..."
 ## ```
@@ -456,8 +449,7 @@ notifier:
       # title: "update available ({{ .Version }})"
       # message: "A new version ({{ .Version }}) of withny-dl is available. Please update."
       # priority: 7
-
-```
+````
 
 </details>
 
@@ -472,7 +464,9 @@ Because withny offers SSO, no password can be used to login. Instead, a token mu
 - `auth._refresh_token.local` (A 20-character string)
 - `auth._token.local` **without Bearer** (A JWT token, starting with `ey...`)
 
-![image-20241006150456727](./README.assets/image-20241006150456727.png)
+You can fetch these cookies by opening the inspector (Application tab):
+
+![image-20250309150814029](./README.assets/image-20250309150814029.png)
 
 Now, let's talk about limitations:
 

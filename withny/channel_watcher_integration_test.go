@@ -30,7 +30,7 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 	}
 	suite.client = api.NewClient(&http.Client{
 		Jar: jar,
-	}, secret.UserPasswordFromEnv{}, secret.NewTmpCache())
+	}, secret.CredentialsFromEnv{}, secret.NewTmpCache())
 	suite.ctx = context.Background()
 	suite.impl = withny.NewChannelWatcher(suite.client, &withny.Params{
 		PacketLossMax:          20,

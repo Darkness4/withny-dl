@@ -84,7 +84,7 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 	}
 	suite.ctx, suite.ctxCancel = context.WithCancel(context.Background())
 
-	credReader := &secret.UserPasswordFromEnv{}
+	credReader := &secret.CredentialsFromEnv{}
 
 	// Check livestream
 	suite.client = api.NewClient(hclient, credReader, secret.NewTmpCache())

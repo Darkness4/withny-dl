@@ -403,6 +403,9 @@ func (c *Client) LoginWithUserPassword(
 	ctx context.Context,
 	username, password string,
 ) (Credentials, error) {
+	log.Warn().
+		Msg("login with user password is deprecated, and will not work since withny has a captcha, please login with refresh token instead")
+
 	log.Info().Str("username", username).Msg("logging in")
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(map[string]string{

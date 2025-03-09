@@ -1,8 +1,8 @@
 module github.com/Darkness4/withny-dl
 
-go 1.22.7
+go 1.23
 
-toolchain go1.23.6
+toolchain go1.23.0
 
 require (
 	github.com/coder/websocket v1.8.12
@@ -30,6 +30,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0
 	go.opentelemetry.io/otel/sdk/metric v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
+	golang.org/x/crypto v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
