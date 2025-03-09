@@ -22,7 +22,11 @@ func TestScraper(t *testing.T) {
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	require.NoError(t, err)
 	hclient := &http.Client{Jar: jar, Timeout: time.Minute}
-	client := api.NewClient(hclient, &secret.CredentialsFromEnv{}, secret.NewTmpCache())
+	client := api.NewClient(
+		hclient,
+		&secret.CredentialsFromEnv{},
+		secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+	)
 	scraper := api.NewScraper(client)
 
 	t.Run("FindGraphQLAndStreamUUID", func(t *testing.T) {

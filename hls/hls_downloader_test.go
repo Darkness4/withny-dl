@@ -288,7 +288,11 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 		}),
 	)
 	suite.impl = NewDownloader(
-		api.NewClient(suite.server.Client(), secret.CredentialsFromEnv{}, secret.NewTmpCache()),
+		api.NewClient(
+			suite.server.Client(),
+			secret.CredentialsFromEnv{},
+			secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+		),
 		suite.server.URL,
 		WithPacketLossMax(10),
 		WithLogger(&log.Logger),
@@ -323,7 +327,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewTmpCache(),
+				secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
 			),
 			suite.server.URL,
 			WithPlaylistRetries(2),
@@ -360,7 +364,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewTmpCache(),
+				secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
 			),
 			suite.server.URL,
 			WithPlaylistRetries(3),
@@ -388,7 +392,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewTmpCache(),
+				secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
 			),
 			suite.server.URL,
 			WithFragmentRetries(2),
@@ -426,7 +430,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewTmpCache(),
+				secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
 			),
 			suite.server.URL,
 			WithFragmentRetries(3),
@@ -497,7 +501,11 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 		}),
 	)
 	suite.impl = NewDownloader(
-		api.NewClient(suite.server.Client(), secret.CredentialsFromEnv{}, secret.NewTmpCache()),
+		api.NewClient(
+			suite.server.Client(),
+			secret.CredentialsFromEnv{},
+			secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+		),
 		suite.server.URL,
 		WithPacketLossMax(10),
 		WithLogger(&log.Logger),

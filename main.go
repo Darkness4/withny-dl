@@ -6,7 +6,6 @@ import (
 
 	"github.com/Darkness4/withny-dl/cmd/clean"
 	"github.com/Darkness4/withny-dl/cmd/concat"
-	"github.com/Darkness4/withny-dl/cmd/logintest"
 	"github.com/Darkness4/withny-dl/cmd/remux"
 	"github.com/Darkness4/withny-dl/cmd/watch"
 	"github.com/rs/zerolog"
@@ -69,7 +68,6 @@ var app = &cli.App{
 		remux.Command,
 		concat.Command,
 		clean.Command,
-		logintest.Command,
 	},
 }
 

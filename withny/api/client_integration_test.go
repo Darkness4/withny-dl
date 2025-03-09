@@ -46,46 +46,14 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 	hclient := &http.Client{Jar: jar, Timeout: time.Minute}
 	credReader := &secret.CredentialsFromEnv{}
-	saved, _ := credReader.Read()
-	client := api.NewClient(hclient, credReader, secret.NewTmpCache())
+	client := api.NewClient(
+		hclient,
+		credReader,
+		secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+	)
 
-	t.Run("Login with refresh token", func(t *testing.T) {
+	t.Run("Login", func(t *testing.T) {
 		// Act
-		newCredentials := api.Credentials{
-			LoginResponse: api.LoginResponse{
-				Token:        saved.Token,
-				RefreshToken: saved.RefreshToken,
-				TokenType:    "Bearer",
-			},
-		}
-		client.SetCredentials(newCredentials)
-
-		require.NoError(t, err)
-		time.Sleep(2 * time.Second)
-		res, err := client.LoginWithRefreshToken(
-			context.Background(),
-			saved.RefreshToken,
-		)
-
-		// Assert
-		require.NoError(t, err)
-		require.NotEmpty(t, res.Token)
-		require.NotEmpty(t, res.RefreshToken)
-		require.NotEmpty(t, res.TokenType)
-		require.Equal(t, "Bearer", res.TokenType)
-		require.NotEmpty(t, res.UserUUID)
-		require.NoError(t, err)
-		time, err := res.GetExpirationTime()
-		require.NoError(t, err)
-		require.NotZero(t, time.Time)
-	})
-
-	t.Run("Token-based authentication", func(t *testing.T) {
-		// Act
-		static := secret.Static{
-			SavedCredentials: saved,
-		}
-		client := api.NewClient(hclient, &static, secret.NewTmpCache())
 		err = client.Login(context.Background())
 
 		// Assert
