@@ -1,4 +1,5 @@
 credentialsFile: 'credentials.yaml'
+cachedCredentialsFile: 'withny-dl.json'
 
 defaultParams:
   outFormat: output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}

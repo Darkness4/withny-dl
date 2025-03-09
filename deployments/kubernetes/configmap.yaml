@@ -6,6 +6,7 @@ data:
   config.yaml: |
 
     credentialsFile: '/secrets/credentials.yaml'
+    cachedCredentialsFile: '/output/withny-dl.json'
 
     defaultParams:
       outFormat: /output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}

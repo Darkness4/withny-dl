@@ -160,6 +160,9 @@ refreshToken: 'abc...'
 
 ```yaml
 credentialsFile: 'credentials.yaml'
+## Withny-dl refreshes the token and must store it somewhere.
+## The file is encrypted.
+cachedCredentialsFile: 'withny-dl.json'
 
 defaultParams:
   outFormat: output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
@@ -200,6 +203,9 @@ channels:
 ## ```
 ##
 credentialsFile: 'credentials.yaml'
+## Withny-dl refreshes the token and must store it somewhere.
+## The file is encrypted.
+cachedCredentialsFile: 'withny-dl.json'
 
 defaultParams:
   ## Quality constraint to select the stream to download.
