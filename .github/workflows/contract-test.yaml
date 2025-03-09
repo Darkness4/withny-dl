@@ -46,7 +46,7 @@ jobs:
       - name: Cache token
         uses: actions/cache@v4
         with:
-          path: withny-dl-test.json
+          path: /tmp/withny-dl-test.json
           key: refreshed-token
 
       - name: test
@@ -58,5 +58,5 @@ jobs:
       - name: Save cache
         uses: actions/cache/save@v4
         with:
-          path: withny-dl-test.json
+          path: /tmp/withny-dl-test.json
           key: refreshed-token

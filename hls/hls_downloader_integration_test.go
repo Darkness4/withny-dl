@@ -90,7 +90,7 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 	suite.client = api.NewClient(
 		hclient,
 		credReader,
-		secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 	)
 	err = suite.client.Login(context.Background())
 	suite.Require().NoError(err)

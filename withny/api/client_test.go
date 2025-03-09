@@ -24,7 +24,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 		impl := api.NewClient(
 			server.Client(),
 			secret.CredentialsFromEnv{},
-			secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+			secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		)
 
 		// Act
@@ -56,7 +56,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 		impl := api.NewClient(
 			server.Client(),
 			secret.CredentialsFromEnv{},
-			secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+			secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		)
 
 		// Act

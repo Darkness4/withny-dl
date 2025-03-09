@@ -31,7 +31,7 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 	suite.client = api.NewClient(
 		&http.Client{Jar: jar},
 		secret.CredentialsFromEnv{},
-		secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 	)
 	suite.ctx = context.Background()
 	suite.impl = withny.NewChannelWatcher(suite.client, &withny.Params{

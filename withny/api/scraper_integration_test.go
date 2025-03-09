@@ -25,7 +25,7 @@ func TestScraper(t *testing.T) {
 	client := api.NewClient(
 		hclient,
 		&secret.CredentialsFromEnv{},
-		secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 	)
 	scraper := api.NewScraper(client)
 

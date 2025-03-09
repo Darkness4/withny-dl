@@ -49,7 +49,7 @@ func TestClient(t *testing.T) {
 	client := api.NewClient(
 		hclient,
 		credReader,
-		secret.NewFileCache("withny-dl-test.json", "withny-dl-test-secret"),
+		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 	)
 
 	t.Run("Login", func(t *testing.T) {
