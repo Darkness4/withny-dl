@@ -44,10 +44,12 @@ jobs:
           go mod download
 
       - name: Cache token
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/withny-dl-test.json
-          key: refreshed-token
+          key: refreshed-token-${{ github.sha }}
+          restore-keys: |
+            refreshed-token-
 
       - name: test
         env:
@@ -59,4 +61,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/withny-dl-test.json
-          key: refreshed-token
+          key: refreshed-token-${{ github.sha }}-${{ hashFiles('/tmp/withny-dl-test.json') }}
