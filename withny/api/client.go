@@ -142,7 +142,7 @@ func (c *Client) NewAuthRequestWithContext(
 	}
 	creds, err := c.credentialsCache.Get()
 	if err != nil {
-		log.Err(err).Msg("failed to get credentials")
+		log.Err(err).Msg("failed to get cached credentials")
 	}
 	if creds.TokenType != "" {
 		req.Header.Set("Authorization", creds.TokenType+" "+creds.Token)
@@ -155,7 +155,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 	var creds Credentials
 	cachedCreds, err := c.credentialsCache.Get()
 	if err != nil {
-		log.Err(err).Msg("failed to get credentials")
+		log.Err(err).Msg("failed to get cached credentials")
 	}
 
 	switch {
@@ -640,7 +640,7 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 
 	creds, err := c.credentialsCache.Get()
 	if err != nil {
-		log.Err(err).Msg("failed to get credentials")
+		log.Err(err).Msg("failed to get cached credentials")
 	}
 	date, err := creds.GetExpirationTime()
 	if err != nil {
@@ -670,7 +670,7 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 			}
 			creds, err := c.credentialsCache.Get()
 			if err != nil {
-				log.Err(err).Msg("failed to get credentials")
+				log.Err(err).Msg("failed to get cached credentials")
 			}
 			date, err := creds.GetExpirationTime()
 			if err != nil {

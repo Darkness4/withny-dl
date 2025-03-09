@@ -44,6 +44,7 @@ const versionCheckURL = "https://api.github.com/repos/Darkness4/withny-dl/releas
 var (
 	configPath             string
 	pprofListenAddress     string
+	encryptionKey          string
 	enableTracesExporting  bool
 	enableMetricsExporting bool
 )
@@ -59,6 +60,13 @@ var Command = &cli.Command{
 			Required:    true,
 			Usage:       `Config file path. (required)`,
 			Destination: &configPath,
+		},
+		&cli.StringFlag{
+			Name:        "secret.encryptionKey",
+			Value:       "WITHNY_DL_ENCRYPTION_KEY",
+			Destination: &encryptionKey,
+			Usage:       "An encryption secret to encrypt the cached refresh token.",
+			EnvVars:     []string{"WITHNY_ENCRYPTION_KEY"},
 		},
 		&cli.StringFlag{
 			Name:        "pprof.listen-address",
@@ -180,7 +188,14 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 	if config.CredentialsFile == "" {
 		log.Fatal().Msg("no credentials file configured")
 	}
-	client := api.NewClient(hclient, secret.NewReader(config.CredentialsFile), secret.NewTmpCache())
+	if config.CachedCredentialsFile == "" {
+		config.CachedCredentialsFile = "withny-dl.json"
+	}
+	client := api.NewClient(
+		hclient,
+		secret.NewReader(config.CredentialsFile),
+		secret.NewFileCache(config.CachedCredentialsFile, encryptionKey),
+	)
 
 	go func() {
 		if err := client.LoginLoop(ctx); err != nil {

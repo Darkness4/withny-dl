@@ -82,7 +82,7 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 	// Build header query which is the base64 encoded value of the json of authorization and host.
 	creds, err := w.Client.credentialsCache.Get()
 	if err != nil {
-		w.log.Err(err).Msg("failed to get credentials")
+		w.log.Err(err).Msg("failed to get cached credentials")
 	}
 	v := map[string]string{
 		"Authorization": creds.TokenType + " " + creds.Token,
@@ -211,7 +211,7 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 	}
 	creds, err := w.Client.credentialsCache.Get()
 	if err != nil {
-		w.log.Err(err).Msg("failed to get credentials")
+		w.log.Err(err).Msg("failed to get cached credentials")
 	}
 	msg := graphql.BuildSubscribeMessage(graphql.SubscribeMessagePayload{
 		Data: string(jsonQuery),

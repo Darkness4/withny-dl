@@ -106,12 +106,14 @@ func Decrypt(r io.Reader, secret []byte) ([]byte, error) {
 // FileCache is a secret cache that reads from a file.
 type FileCache struct {
 	FilePath string
+	Secret   []byte
 }
 
 // NewFileCache creates a new file cache.
-func NewFileCache(filePath string) *FileCache {
+func NewFileCache(filePath string, secret string) *FileCache {
 	return &FileCache{
 		FilePath: filePath,
+		Secret:   []byte(secret),
 	}
 }
 

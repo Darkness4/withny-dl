@@ -25,3 +25,4 @@ credentials*.yaml
 # C output
 *.out
 **/.env.test
+withny-dl.json
