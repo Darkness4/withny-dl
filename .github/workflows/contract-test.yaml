@@ -43,8 +43,20 @@ jobs:
         run: |
           go mod download
 
+      - name: Cache token
+        uses: actions/cache@v4
+        with:
+          path: withny-dl.json
+          key: refreshed-token
+
       - name: test
         env:
-          WITHNY_USERNAME: ${{ secrets.WITHNY_USERNAME }}
-          WITHNY_PASSWORD: ${{ secrets.WITHNY_PASSWORD }}
+          WITHNY_ACCESS_TOKEN: ${{ secrets.WITHNY_ACCESS_TOKEN }}
+          WITHNY_REFRESH_TOKEN: ${{ secrets.WITHNY_REFRESH_TOKEN }}
         run: go test -v -tags=contract -timeout=30s github.com/Darkness4/withny-dl/withny/api
+
+      - name: Save cache
+        uses: actions/cache/save@v4
+        with:
+          path: withny-dl.json
+          key: refreshed-token
