@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /tmp/withny-dl-test.json
-          key: refreshed-token-${{ github.sha }}
+          key: refreshed-token-${{ github.sha }}-${{ github.run_id }}
           restore-keys: |
             refreshed-token-
 
@@ -61,4 +61,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/withny-dl-test.json
-          key: refreshed-token-${{ github.sha }}-${{ hashFiles('/tmp/withny-dl-test.json') }}
+          key: refreshed-token-${{ github.sha }}-${{ github.run_id }}
