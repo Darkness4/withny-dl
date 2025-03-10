@@ -477,7 +477,7 @@ You can fetch these cookies by opening the [inspector tools](https://developer.c
 Now, let's talk about limitations:
 
 - The refresh token can **only** be used once. After that, the API will return an Unauthorized error. This means that the refresh token in the `credentials.yaml` file should be updated the moment you get an unauthorized error.
-- Obviously, this is not optimal, so **withny-dl will do it for you and cache it in the `/tmp/withny-dl.json`** file (with the right permissions). The cache is invalidated if the refresh token fails or is used. If it is invalidated, it will fallback to the `credentials.yaml` file. And if this fails too, the program will exit with an error. **The program will not be able to restart itself if the refresh token is invalid.**
+- Obviously, this is not optimal, so **withny-dl will do it for you and cache it in the directory specified by `cachedCredentialsFile`** file (with the right permissions). The cache is invalidated if the refresh token fails or is used. If it is invalidated, it will fallback to the `credentials.yaml` file. And if this fails too, the program will exit with an error. **The program will not be able to restart itself if the refresh token is invalid.**
 
 Therefore, it is **extremely recommended to setup a notification channel to be notified when the program stops**. You can find availables channel at [shoutrrr](https://containrrr.dev/shoutrrr/v0.8/services/discord/).
 
