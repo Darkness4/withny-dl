@@ -163,7 +163,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 		tries := 0
 		for {
 			creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
-			if err == nil {
+			if err != nil {
 				if tries < 10 {
 					log.Err(err).
 						Int("tries", tries).
