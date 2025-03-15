@@ -160,14 +160,27 @@ func (c *Client) Login(ctx context.Context) (err error) {
 
 	switch {
 	case cachedCreds.Token != "":
-		creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
-		if err != nil {
-			log.Err(err).Msg("failed to refresh token from cache, will use provided credentials")
-			err = c.credentialsCache.Invalidate()
-			if err != nil {
-				log.Err(err).Msg("failed to invalidate cache")
+		tries := 0
+		for {
+			creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
+			if err == nil {
+				if tries < 10 {
+					log.Err(err).
+						Int("tries", tries).
+						Msg("failed to refresh token from cache, retrying")
+					tries++
+					time.Sleep(time.Second)
+					continue
+				}
+				log.Err(err).
+					Msg("failed to refresh token from cache, will use provided credentials")
+				err = c.credentialsCache.Invalidate()
+				if err != nil {
+					log.Err(err).Msg("failed to invalidate cache")
+				}
+				creds, err = c.loginWithReader(ctx)
 			}
-			creds, err = c.loginWithReader(ctx)
+			break
 		}
 	default:
 		creds, err = c.loginWithReader(ctx)
