@@ -115,6 +115,14 @@ type Client struct {
 	clearCredentialCacheOnFailureAfter int
 }
 
+// WithClearCredentialCacheOnFailureAfter sets the number of times to retry
+// before clearing the credentials cache.
+func WithClearCredentialCacheOnFailureAfter(i int) ClientOption {
+	return func(opts *ClientOptions) {
+		opts.clearCredentialCacheOnFailureAfter = i
+	}
+}
+
 // SetCredentials sets the credentials for the client.
 func (c *Client) SetCredentials(creds Credentials) {
 	err := c.credentialsCache.Set(creds)
