@@ -99,11 +99,20 @@ type CredentialsCache interface {
 	Invalidate() error
 }
 
+// ClientOptions is the options for the withny API client.
+type ClientOptions struct {
+	clearCredentialCacheOnFailureAfter int
+}
+
+// ClientOption is a function that configures the withny API client.
+type ClientOption func(*ClientOptions)
+
 // Client is a withny API client.
 type Client struct {
 	*http.Client
-	credentialsReader CredentialsReader
-	credentialsCache  CredentialsCache
+	credentialsReader                  CredentialsReader
+	credentialsCache                   CredentialsCache
+	clearCredentialCacheOnFailureAfter int
 }
 
 // SetCredentials sets the credentials for the client.
@@ -115,17 +124,30 @@ func (c *Client) SetCredentials(creds Credentials) {
 }
 
 // NewClient creates a new withny API client.
-func NewClient(client *http.Client, reader CredentialsReader, cache CredentialsCache) *Client {
+func NewClient(
+	client *http.Client,
+	reader CredentialsReader,
+	cache CredentialsCache,
+	opt ...ClientOption,
+) *Client {
 	if reader == nil {
 		log.Warn().Msg("no user and password provided")
 	}
 	if cache == nil {
 		log.Panic().Msg("no credentials cache provided")
 	}
+	opts := &ClientOptions{}
+	for _, o := range opt {
+		o(opts)
+	}
+	if opts.clearCredentialCacheOnFailureAfter == 0 {
+		opts.clearCredentialCacheOnFailureAfter = 300
+	}
 	return &Client{
-		Client:            client,
-		credentialsReader: reader,
-		credentialsCache:  cache,
+		Client:                             client,
+		credentialsReader:                  reader,
+		credentialsCache:                   cache,
+		clearCredentialCacheOnFailureAfter: opts.clearCredentialCacheOnFailureAfter,
 	}
 }
 
@@ -164,7 +186,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 		for {
 			creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
 			if err != nil {
-				if tries < 10 {
+				if tries < c.clearCredentialCacheOnFailureAfter {
 					log.Err(err).
 						Int("tries", tries).
 						Msg("failed to refresh token from cache, retrying")

@@ -15,12 +15,13 @@ import (
 
 // Config is the configuration for the watch command.
 type Config struct {
-	Notifier              NotifierConfig                   `yaml:"notifier,omitempty"`
-	RateLimitAvoidance    RateLimitAvoidance               `yaml:"rateLimitAvoidance,omitempty"`
-	CredentialsFile       string                           `yaml:"credentialsFile,omitempty"`
-	CachedCredentialsFile string                           `yaml:"cachedCredentialsFile,omitempty"`
-	DefaultParams         withny.OptionalParams            `yaml:"defaultParams,omitempty"`
-	Channels              map[string]withny.OptionalParams `yaml:"channels,omitempty"`
+	Notifier                           NotifierConfig                   `yaml:"notifier,omitempty"`
+	RateLimitAvoidance                 RateLimitAvoidance               `yaml:"rateLimitAvoidance,omitempty"`
+	CredentialsFile                    string                           `yaml:"credentialsFile,omitempty"`
+	CachedCredentialsFile              string                           `yaml:"cachedCredentialsFile,omitempty"`
+	ClearCredentialCacheOnFailureAfter int                              `yaml:"clearCredentialCacheOnFailureAfter,omitempty"`
+	DefaultParams                      withny.OptionalParams            `yaml:"defaultParams,omitempty"`
+	Channels                           map[string]withny.OptionalParams `yaml:"channels,omitempty"`
 }
 
 // NotifierConfig is the configuration for the notifier.

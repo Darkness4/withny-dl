@@ -163,6 +163,9 @@ credentialsFile: 'credentials.yaml'
 ## Withny-dl refreshes the token and must store it somewhere.
 ## The file is encrypted.
 cachedCredentialsFile: 'withny-dl.json'
+## The cache will be cleared after X failures to login.
+## There is a try every second.
+clearCredentialCacheOnFailureAfter: 300
 
 defaultParams:
   outFormat: output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
@@ -206,6 +209,9 @@ credentialsFile: 'credentials.yaml'
 ## Withny-dl refreshes the token and must store it somewhere.
 ## The file is encrypted.
 cachedCredentialsFile: 'withny-dl.json'
+## The cache will be cleared after X failures to login.
+## There is a try every second.
+clearCredentialCacheOnFailureAfter: 300
 
 defaultParams:
   ## Quality constraint to select the stream to download.
