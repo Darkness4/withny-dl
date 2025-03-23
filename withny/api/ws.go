@@ -85,7 +85,7 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 		w.log.Err(err).Msg("failed to get cached credentials")
 	}
 	v := map[string]string{
-		"Authorization": creds.TokenType + " " + creds.Token,
+		"Authorization": "Bearer " + creds.Token,
 		"Host":          w.url.Host,
 	}
 	vjson, err := json.Marshal(v)

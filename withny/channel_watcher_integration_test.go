@@ -32,7 +32,7 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 		&http.Client{Jar: jar},
 		secret.CredentialsFromEnv{},
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
-		api.WithClearCredentialCacheOnFailureAfter(10),
+		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
 	suite.ctx = context.Background()
 	suite.impl = withny.NewChannelWatcher(suite.client, &withny.Params{

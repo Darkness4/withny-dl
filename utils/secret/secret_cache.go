@@ -117,16 +117,9 @@ func NewFileCache(filePath string, secret string) *FileCache {
 	}
 }
 
-// NewTmpCache creates a new temporary cache.
-func NewTmpCache() *FileCache {
-	return &FileCache{
-		FilePath: os.TempDir() + "/withny-dl.json",
-	}
-}
-
 // Get reads the credentials from a file.
-func (f *FileCache) Get() (api.Credentials, error) {
-	var creds api.Credentials
+func (f *FileCache) Get() (api.CachedCredentials, error) {
+	var creds api.CachedCredentials
 
 	file, err := os.Open(f.FilePath)
 	if err != nil {
@@ -150,15 +143,48 @@ func (f *FileCache) Get() (api.Credentials, error) {
 }
 
 // Set writes the credentials to a file.
+//
+// To avoid erasing the credentials file, it will reads the current credentials and merge the new credentials.
 func (f *FileCache) Set(creds api.Credentials) error {
+	current, err := f.Get()
+	if err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(f.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
+	// Remove password-based login, caching is only allowed after login.
+	current.Token = creds.Token
+	current.RefreshToken = creds.RefreshToken
+
 	// Encrypt the JSON data and write it to the writer
-	decrypted, err := json.Marshal(creds)
+	decrypted, err := json.Marshal(current)
+	if err != nil {
+		return err
+	}
+
+	return Encrypt(file, hardcodedSecret, decrypted)
+}
+
+// Init writes the credentials to a file, but store the hash of the credentials.
+func (f *FileCache) Init(creds api.Credentials, hash string) error {
+	file, err := os.OpenFile(f.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	cached := api.CachedCredentials{
+		Credentials: creds,
+		Hash:        hash,
+	}
+
+	// Encrypt the JSON data and write it to the writer
+	decrypted, err := json.Marshal(cached)
 	if err != nil {
 		return err
 	}

@@ -87,15 +87,33 @@ type SavedCredentials struct {
 	RefreshToken string `yaml:"refreshToken" json:"refreshToken"`
 }
 
+// Hash returns the hash of the credentials.
+func (r SavedCredentials) Hash() string {
+	return utils.Hash(r)
+}
+
 // CredentialsReader is an interface for reading saved credentials.
 type CredentialsReader interface {
 	Read() (SavedCredentials, error)
 }
 
+// CachedCredentials is the information stored in the cached file.
+type CachedCredentials struct {
+	Credentials
+
+	// Hash is used to invalidate when the original secret changes.
+	Hash string
+}
+
 // CredentialsCache is an interface for caching credentials.
 type CredentialsCache interface {
+	// Set writes the credentials to a file.
 	Set(creds Credentials) error
-	Get() (Credentials, error)
+	// Set writes the credentials to a file, but store the hash of the credentials.
+	Init(creds Credentials, hash string) error
+	// Get reads the credentials from a file.
+	Get() (CachedCredentials, error)
+	// Invalidate removes the credentials file.
 	Invalidate() error
 }
 
@@ -123,14 +141,6 @@ func WithClearCredentialCacheOnFailureAfter(i int) ClientOption {
 	}
 }
 
-// SetCredentials sets the credentials for the client.
-func (c *Client) SetCredentials(creds Credentials) {
-	err := c.credentialsCache.Set(creds)
-	if err != nil {
-		log.Err(err).Msg("failed to cache credentials")
-	}
-}
-
 // NewClient creates a new withny API client.
 func NewClient(
 	client *http.Client,
@@ -143,6 +153,9 @@ func NewClient(
 	}
 	if cache == nil {
 		log.Panic().Msg("no credentials cache provided")
+	}
+	if reader == nil {
+		log.Panic().Msg("no credentials reader provided")
 	}
 	opts := &ClientOptions{}
 	for _, o := range opt {
@@ -174,18 +187,31 @@ func (c *Client) NewAuthRequestWithContext(
 	if err != nil {
 		log.Err(err).Msg("failed to get cached credentials")
 	}
-	if creds.TokenType != "" {
-		req.Header.Set("Authorization", creds.TokenType+" "+creds.Token)
-	}
+	req.Header.Set("Authorization", "Bearer "+creds.Token)
 	return req, nil
 }
 
 // Login will login to withny and store the credentials in the client.
 func (c *Client) Login(ctx context.Context) (err error) {
 	var creds Credentials
+
+	// Check if cache is valid
 	cachedCreds, err := c.credentialsCache.Get()
 	if err != nil {
 		log.Err(err).Msg("failed to get cached credentials")
+	}
+	original, err := c.credentialsReader.Read()
+	if err != nil {
+		log.Err(err).Msg("failed to read credentials")
+		return err
+	}
+	if cachedCreds.Hash != original.Hash() {
+		log.Info().Msg("credentials changed, clearing cache")
+		err := c.credentialsCache.Invalidate()
+		if err != nil {
+			log.Err(err).Msg("failed to invalidate cache")
+		}
+		cachedCreds = CachedCredentials{}
 	}
 
 	switch {
@@ -198,6 +224,9 @@ func (c *Client) Login(ctx context.Context) (err error) {
 					log.Err(err).
 						Int("tries", tries).
 						Msg("failed to refresh token from cache, retrying")
+					if err := notifier.NotifyLoginFailed(ctx, err); err != nil {
+						log.Err(err).Msg("notify failed")
+					}
 					tries++
 					time.Sleep(time.Second)
 					continue
@@ -227,16 +256,19 @@ func (c *Client) Login(ctx context.Context) (err error) {
 }
 
 func (c *Client) loginWithReader(ctx context.Context) (Credentials, error) {
-	if c.credentialsReader == nil {
-		return Credentials{}, fmt.Errorf("no credentials provided")
-	}
 	creds, err := c.credentialsReader.Read()
 	if err != nil {
 		log.Err(err).Msg("failed to read credentials")
 		return Credentials{}, err
 	}
 	if creds.Username != "" {
-		return c.LoginWithUserPassword(ctx, creds.Username, creds.Password)
+		resp, err := c.LoginWithUserPassword(ctx, creds.Username, creds.Password)
+		if err != nil {
+			return Credentials{}, err
+		}
+		if err := c.credentialsCache.Init(resp, creds.Hash()); err != nil {
+			log.Err(err).Msg("failed to cache credentials")
+		}
 	} else if creds.Token != "" {
 		// Hijack the client token to override authorization header
 		newCredentials := Credentials{
@@ -246,8 +278,7 @@ func (c *Client) loginWithReader(ctx context.Context) (Credentials, error) {
 				TokenType:    "Bearer",
 			},
 		}
-		err := c.credentialsCache.Set(newCredentials)
-		if err != nil {
+		if err := c.credentialsCache.Init(newCredentials, creds.Hash()); err != nil {
 			log.Err(err).Msg("failed to cache credentials")
 		}
 		return c.LoginWithRefreshToken(ctx, creds.RefreshToken)
@@ -689,9 +720,14 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 	if err != nil {
 		panic(err)
 	}
-
-	// Refresh token 5 minutes before it expires
-	refreshTime := date.Add(-5 * time.Minute)
+	var refreshTime time.Time
+	if date == nil {
+		// Refresh in 5 minutes
+		refreshTime = time.Now().Add(5 * time.Minute)
+	} else {
+		// Refresh token 5 minutes before it expires
+		refreshTime = date.Add(-5 * time.Minute)
+	}
 
 	ticker := time.NewTicker(time.Until(refreshTime))
 	defer ticker.Stop()

@@ -91,7 +91,7 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 		hclient,
 		credReader,
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
-		api.WithClearCredentialCacheOnFailureAfter(10),
+		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
 	err = suite.client.Login(context.Background())
 	suite.Require().NoError(err)
