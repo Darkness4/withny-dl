@@ -269,6 +269,7 @@ func (c *Client) loginWithReader(ctx context.Context) (Credentials, error) {
 		if err := c.credentialsCache.Init(resp, creds.Hash()); err != nil {
 			log.Err(err).Msg("failed to cache credentials")
 		}
+		return resp, err
 	} else if creds.Token != "" {
 		// Hijack the client token to override authorization header
 		newCredentials := Credentials{
