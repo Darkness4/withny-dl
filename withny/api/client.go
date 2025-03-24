@@ -756,7 +756,11 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 			if err != nil {
 				panic(err)
 			}
-			refreshTime = date.Add(-5 * time.Minute)
+			if date == nil {
+				refreshTime = time.Now().Add(5 * time.Minute)
+			} else {
+				refreshTime = date.Add(-5 * time.Minute)
+			}
 			ticker.Reset(time.Until(refreshTime))
 		}
 	}
