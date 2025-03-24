@@ -248,6 +248,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 		log.Err(err).Msg("failed to login")
 		return err
 	}
+	log.Info().Msg("login successful and token refreshed")
 
 	if err := c.credentialsCache.Set(creds); err != nil {
 		log.Err(err).Msg("failed to cache credentials")
