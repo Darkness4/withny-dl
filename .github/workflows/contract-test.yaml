@@ -20,6 +20,9 @@ on:
   schedule:
     - cron: '0 * * * *'
 
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   test:
     name: Contract Test withny-dl
