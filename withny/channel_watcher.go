@@ -1,4 +1,4 @@
-// package withny provides a way to watch a withny channel.
+// Package withny provides a way to watch a withny channel.
 package withny
 
 import (
@@ -269,7 +269,7 @@ func (w *ChannelWatcher) HasNewStream(
 
 				channelID := s.Cast.AgencySecret.ChannelName
 				log.Info().Str("channelID", channelID).Str("stream", s.Title).Msg("streams found")
-				getUserResp, lastErr = w.Client.GetUser(ctx, channelID)
+				getUserResp, lastErr = w.GetUser(ctx, channelID)
 				if lastErr != nil {
 					var apiError api.HTTPError
 					var isAPIError = errors.As(lastErr, &apiError)

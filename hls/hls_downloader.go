@@ -127,7 +127,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 		req.Header.Set("Referer", "https://www.withny.fun/")
 		req.Header.Set("Origin", "https://www.withny.fun")
 
-		resp, err := hls.Client.Do(req)
+		resp, err := hls.Do(req)
 		if err != nil {
 			hls.log.Err(err).Msg("failed to fetch fragment URLs")
 			return []Fragment{}, err
@@ -379,7 +379,7 @@ func (hls *Downloader) download(
 		}
 		req.Header.Set("Referer", "https://www.withny.fun/")
 		req.Header.Set("Origin", "https://www.withny.fun")
-		resp, err := hls.Client.Do(req)
+		resp, err := hls.Do(req)
 		if err != nil {
 			hls.log.Err(err).Msg("failed to download fragment")
 			return err
@@ -552,7 +552,7 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 	req.Header.Set("Referer", "https://www.withny.fun/")
 	req.Header.Set("Origin", "https://www.withny.fun")
 
-	resp, err := hls.Client.Do(req)
+	resp, err := hls.Do(req)
 	if err != nil {
 		hls.log.Err(err).Msg("failed to probe stream")
 		return false, err

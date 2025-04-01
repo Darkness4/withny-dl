@@ -80,7 +80,7 @@ func NewWebSocket(
 // Dial connects to the WebSocket server.
 func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 	// Build header query which is the base64 encoded value of the json of authorization and host.
-	creds, err := w.Client.credentialsCache.Get()
+	creds, err := w.credentialsCache.Get()
 	if err != nil {
 		w.log.Err(err).Msg("failed to get cached credentials")
 	}
@@ -209,7 +209,7 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 		w.log.Err(err).Msg("failed to marshal query")
 		return err
 	}
-	creds, err := w.Client.credentialsCache.Get()
+	creds, err := w.credentialsCache.Get()
 	if err != nil {
 		w.log.Err(err).Msg("failed to get cached credentials")
 	}

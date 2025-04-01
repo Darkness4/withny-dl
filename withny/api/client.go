@@ -573,12 +573,13 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
-		if res.StatusCode == http.StatusUnauthorized {
+		switch res.StatusCode {
+		case http.StatusUnauthorized:
 			return "", GetPlaybackURLError{
 				Err:      UnauthorizedError{Body: string(body)},
 				StreamID: streamID,
 			}
-		} else if res.StatusCode == http.StatusInternalServerError {
+		case http.StatusInternalServerError:
 			var errMsg ErrorResponse
 			_ = json.Unmarshal(body, &errMsg)
 			if errMsg.Message == "Stream not found" {
@@ -588,21 +589,22 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 					StreamID: streamID,
 				}
 			}
-		}
-		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
-		log.Err(err).
-			Str("response", string(body)).
-			Int("status", res.StatusCode).
-			Msg("unexpected status code")
-		if res.StatusCode >= http.StatusInternalServerError {
-			return "", HTTPError{
-				Status: res.StatusCode,
-				Body:   string(body),
-				Method: req.Method,
-				URL:    req.URL.String(),
+		default:
+			err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
+			log.Err(err).
+				Str("response", string(body)).
+				Int("status", res.StatusCode).
+				Msg("unexpected status code")
+			if res.StatusCode >= http.StatusInternalServerError {
+				return "", HTTPError{
+					Status: res.StatusCode,
+					Body:   string(body),
+					Method: req.Method,
+					URL:    req.URL.String(),
+				}
 			}
+			return "", err
 		}
-		return "", err
 	}
 
 	var parsed string
