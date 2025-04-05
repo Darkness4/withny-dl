@@ -42,6 +42,12 @@ jobs:
           cache: false
           cache-dependency-path: go.sum
 
+      - name: Get Date
+        id: get-date
+        run: |
+          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Download all Go modules
         run: |
           go mod download
@@ -50,7 +56,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /tmp/withny-dl-test.json
-          key: refreshed-token-${{ github.sha }}-${{ github.run_id }}
+          key: refreshed-token-${{ steps.get-date.outputs.date }}
           restore-keys: |
             refreshed-token-
 
@@ -65,4 +71,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/withny-dl-test.json
-          key: refreshed-token-${{ github.sha }}-${{ github.run_id }}
+          key: refreshed-token-${{ steps.get-date.outputs.date }}
