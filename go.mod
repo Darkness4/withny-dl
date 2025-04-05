@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/coder/websocket v1.8.13
 	github.com/containrrr/shoutrrr v0.8.0
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gabriel-vasile/mimetype v1.4.8
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
