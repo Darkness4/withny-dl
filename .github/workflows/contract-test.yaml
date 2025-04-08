@@ -56,8 +56,10 @@ jobs:
         env:
           WITHNY_CACHED_TOKEN: ${{ secrets.WITHNY_CACHED_TOKEN }}
         run: |
-          echo "$WITHNY_CACHED_TOKEN" > /tmp/withny-dl-test.b64.json
-          base64 -d /tmp/withny-dl-test.b64.json > /tmp/withny-dl-test.json
+          if [ "$WITHNY_CACHED_TOKEN" != "dummy" ]; then
+            echo "$WITHNY_CACHED_TOKEN" > /tmp/withny-dl-test.b64.json
+            base64 -d /tmp/withny-dl-test.b64.json > /tmp/withny-dl-test.json
+          fi
 
       - name: test
         env:
