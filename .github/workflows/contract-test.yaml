@@ -70,7 +70,7 @@ jobs:
       - name: Save secret
         if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.WRITE_SECRET_TOKEN }}
         run: |
           base64 /tmp/withny-dl-test.json > /tmp/withny-dl-test.b64.json
           gh secret set WITHNY_CACHED_TOKEN < /tmp/withny-dl-test.b64.json
