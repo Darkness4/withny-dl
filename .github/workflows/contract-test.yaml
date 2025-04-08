@@ -52,13 +52,12 @@ jobs:
         run: |
           go mod download
 
-      - name: Cache token
-        uses: actions/cache/restore@v4
-        with:
-          path: /tmp/withny-dl-test.json
-          key: refreshed-token-${{ steps.get-date.outputs.date }}
-          restore-keys: |
-            refreshed-token-
+      - name: Restore secret
+        env:
+          WITHNY_CACHED_TOKEN: ${{ secrets.WITHNY_CACHED_TOKEN }}
+        run: |
+          echo "$WITHNY_CACHED_TOKEN" > /tmp/withny-dl-test.b64.json
+          base64 -d /tmp/withny-dl-test.b64.json > /tmp/withny-dl-test.json
 
       - name: test
         env:
@@ -66,9 +65,8 @@ jobs:
           WITHNY_REFRESH_TOKEN: ${{ secrets.WITHNY_REFRESH_TOKEN }}
         run: go test -v -tags=contract -timeout=30s github.com/Darkness4/withny-dl/withny/api
 
-      - name: Save cache
+      - name: Save secret
         if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: /tmp/withny-dl-test.json
-          key: refreshed-token-${{ steps.get-date.outputs.date }}
+        run: |
+          base64 /tmp/withny-dl-test.json > /tmp/withny-dl-test.b64.json
+          gh secret set WITHNY_CACHED_TOKEN < /tmp/withny-dl-test.b64.json
