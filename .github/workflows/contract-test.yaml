@@ -22,6 +22,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -42,24 +43,41 @@ jobs:
           cache: false
           cache-dependency-path: go.sum
 
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "date=$(/bin/date -u "+%Y%m%d%H%M%S")" >> $GITHUB_OUTPUT
-        shell: bash
-
       - name: Download all Go modules
         run: |
           go mod download
 
+      - name: Fetch credentials
+        env:
+          WITHNY_ETCD_CA: ${{ secrets.WITHNY_ETCD_CA }}
+          WITHNY_ETCD_CERT: ${{ secrets.WITHNY_ETCD_CERT }}
+          WITHNY_ETCD_KEY: ${{ secrets.WITHNY_ETCD_KEY }}
+
+        run: |
+          mkdir -p /tmp/secrets
+          chmod 0700 /tmp/secrets
+          echo "$WITHNY_ETCD_CA" > /tmp/secrets/ca.crt
+          echo "$WITHNY_ETCD_CERT" > /tmp/secrets/tls.crt
+          echo "$WITHNY_ETCD_KEY" > /tmp/secrets/tls.key
+
+      - name: Setup etcdctl
+        run: |
+          ETCD_VER=v3.5.21
+          DOWNLOAD_URL=https://storage.googleapis.com/etcd
+          curl -fsSL "${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz" -o /tmp/etcd.tar.gz
+          tar xvzf /tmp/etcd.tar.gz --strip-components=1 -C /tmp
+          chmod +x /tmp/etcdctl || true
+
       - name: Restore secret
         env:
-          WITHNY_CACHED_TOKEN: ${{ secrets.WITHNY_CACHED_TOKEN }}
+          WITHNY_ETCD_PREFIX: ${{ secrets.WITHNY_ETCD_PREFIX }}
+          WITHNY_ETCD_USER: ${{ secrets.WITHNY_ETCD_USER }}
+          WITHNY_ETCD_PASSWORD: ${{ secrets.WITHNY_ETCD_PASSWORD }}
+          WITHNY_ETCD_ADDRESS: ${{ secrets.WITHNY_ETCD_ADDRESS }}
         run: |
-          if [ "$WITHNY_CACHED_TOKEN" != "dummy" ]; then
-            echo "$WITHNY_CACHED_TOKEN" > /tmp/withny-dl-test.b64.json
-            base64 -d /tmp/withny-dl-test.b64.json > /tmp/withny-dl-test.json
-          fi
+          ETCDCTL="/tmp/etcdctl --user=${WITHNY_ETCD_USER} --password=${WITHNY_ETCD_PASSWORD} --endpoints=${WITHNY_ETCD_ADDRESS} --cacert=/tmp/secrets/ca.crt --cert=/tmp/secrets/tls.crt --key=/tmp/secrets/tls.key"
+          $ETCDCTL get "${WITHNY_ETCD_PREFIX}/token" --print-value-only > /tmp/withny-dl-test.b64.json
+          base64 -d /tmp/withny-dl-test.b64.json > /tmp/withny-dl-test.json
 
       - name: test
         env:
@@ -70,7 +88,12 @@ jobs:
       - name: Save secret
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.WRITE_SECRET_TOKEN }}
+          WITHNY_ETCD_PREFIX: ${{ secrets.WITHNY_ETCD_PREFIX }}
+          WITHNY_ETCD_USER: ${{ secrets.WITHNY_ETCD_USER }}
+          WITHNY_ETCD_PASSWORD: ${{ secrets.WITHNY_ETCD_PASSWORD }}
+          WITHNY_ETCD_ADDRESS: ${{ secrets.WITHNY_ETCD_ADDRESS }}
+          WITHNY_CACHED_TOKEN: ${{ secrets.WITHNY_CACHED_TOKEN }}
         run: |
           base64 /tmp/withny-dl-test.json > /tmp/withny-dl-test.b64.json
-          gh secret set WITHNY_CACHED_TOKEN < /tmp/withny-dl-test.b64.json
+          ETCDCTL="/tmp/etcdctl --user=${WITHNY_ETCD_USER} --password=${WITHNY_ETCD_PASSWORD} --endpoints=${WITHNY_ETCD_ADDRESS} --cacert=/tmp/secrets/ca.crt --cert=/tmp/secrets/tls.crt --key=/tmp/secrets/tls.key"
+          $ETCDCTL put "${WITHNY_ETCD_PREFIX}/token" < /tmp/withny-dl-test.b64.json
