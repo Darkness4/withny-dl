@@ -96,4 +96,11 @@ jobs:
         run: |
           base64 /tmp/withny-dl-test.json > /tmp/withny-dl-test.b64.json
           ETCDCTL="/tmp/etcdctl --user=${WITHNY_ETCD_USER} --password=${WITHNY_ETCD_PASSWORD} --endpoints=${WITHNY_ETCD_ADDRESS} --cacert=/tmp/secrets/ca.crt --cert=/tmp/secrets/tls.crt --key=/tmp/secrets/tls.key"
-          $ETCDCTL put "${WITHNY_ETCD_PREFIX}/token" < /tmp/withny-dl-test.b64.json
+          count=0
+          while ! $ETCDCTL put "${WITHNY_ETCD_PREFIX}/token" < /tmp/withny-dl-test.b64.json; do
+            sleep 1
+            count=$((count+1))
+            if [[ $count -eq 60 ]]; then
+              exit 1
+            fi
+          done
