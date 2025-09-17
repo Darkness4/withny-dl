@@ -30,7 +30,7 @@ func TestWebSocket(t *testing.T) {
 		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
 	scraper := api.NewScraper(client)
-	wsURL, suuid, err := scraper.FindGraphQLAndStreamUUID(context.Background(), "admin")
+	wsURL, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin")
 	require.NoError(t, err)
 	ws := api.NewWebSocket(client, wsURL)
 

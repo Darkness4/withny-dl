@@ -30,8 +30,6 @@ import (
 
 const (
 	tracerName    = "withny"
-	msgBufMax     = 100
-	errBufMax     = 10
 	commentBufMax = 100
 )
 

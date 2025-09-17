@@ -28,7 +28,7 @@ func DownloadChat(ctx context.Context, client *api.Client, chat Chat) error {
 	defer span.End()
 
 	endpoint, suuid, err := api.NewScraper(client).
-		FindGraphQLAndStreamUUID(ctx, chat.ChannelID)
+		FetchGraphQLAndStreamUUID(ctx, chat.ChannelID)
 	if err != nil {
 		log.Err(err).Msg("failed to find graphql endpoint for chat")
 		return err
