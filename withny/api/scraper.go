@@ -63,7 +63,7 @@ func (s *Scraper) FetchGraphQLAndStreamUUID(
 }
 
 var mainAppURLRegex = regexp.MustCompile(`(?m)"(\/[^"]*main-app[^"]*\.js)"`)
-var graphqlURLRegex = regexp.MustCompile(`(?m)NEXT_PUBLIC_GRAPHQL_ENDPOINT: "([^"]*)"`)
+var graphqlURLRegex = regexp.MustCompile(`(?m)NEXT_PUBLIC_GRAPHQL_ENDPOINT:\s*"([^"]*)"`)
 var streamUUIDRegex = regexp.MustCompile(`(?m)ivsChannelUuid\\":\\"([^"]*)\\"`)
 
 // findMainAppAndStreamUUID finds the GraphQL endpoint and stream UUID.
