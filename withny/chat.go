@@ -34,7 +34,7 @@ func DownloadChat(ctx context.Context, client *api.Client, chat Chat) error {
 		return err
 	}
 
-	ws := api.NewWebSocket(client, endpoint)
+	ws := api.NewCommentWebSocket(client, endpoint)
 	conn, err := ws.Dial(ctx)
 	if err != nil {
 		log.Err(err).Msg("failed to dial websocket")

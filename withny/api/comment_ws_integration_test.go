@@ -32,7 +32,7 @@ func TestWebSocket(t *testing.T) {
 	scraper := api.NewScraper(client)
 	wsURL, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin")
 	require.NoError(t, err)
-	ws := api.NewWebSocket(client, wsURL)
+	ws := api.NewCommentWebSocket(client, wsURL)
 
 	t.Run("WatchComments", func(t *testing.T) {
 		ctx := context.Background()
