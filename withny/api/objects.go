@@ -44,6 +44,7 @@ type GetStreamsResponseElement struct {
 	BillingMode     string      `json:"billingMode"`
 	Price           json.Number `json:"price"`
 	StreamingMethod string      `json:"streamingMethod"`
+	PassCode        any         `json:"passCode"`
 	StartedAt       time.Time   `json:"startedAt"`
 	ClosedAt        any         `json:"closedAt"`
 	DeviceID        json.Number `json:"deviceId"`
@@ -61,6 +62,7 @@ type Cast struct {
 	IsFavorite              bool                     `json:"isFavorite"`
 	CastSocialMediaAccounts []CastSocialMediaAccount `json:"castSocialMediaAccounts"`
 	AgencySecret            AgencySecret             `json:"agencySecret"`
+	User                    User                     `json:"user"`
 }
 
 // CastSocialMediaAccount is the social media account of the cast.
@@ -75,6 +77,17 @@ type AgencySecret struct {
 	UUID        string `json:"uuid"`
 	ChannelName string `json:"username"`
 	Name        string `json:"name"`
+}
+
+// User is the user of the stream.
+type User struct {
+	ID              int64  `json:"id"`
+	UUID            string `json:"uuid"`
+	Username        string `json:"username"`
+	Name            string `json:"name"`
+	ProfileText     string `json:"profileText"`
+	ProfileImageURL string `json:"profileImageUrl"`
+	HeaderImageURL  string `json:"headerImageUrl"`
 }
 
 // WSCommentResponse is the response of the WebSocket GraphQL Comments API.
