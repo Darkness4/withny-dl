@@ -27,7 +27,7 @@ func init() {
 }
 
 func findAnyLiveStream(t *testing.T, client *api.Client) (username string) {
-	streams, err := client.GetStreams(context.Background(), "")
+	streams, err := client.GetStreams(context.Background(), "", "")
 	require.NoError(t, err)
 
 	if len(streams) == 0 {
@@ -56,7 +56,11 @@ func (suite *DownloaderIntegrationTestSuite) fetchPlaylist(
 	client *api.Client,
 ) api.Playlist {
 	// Act
-	streams, err := client.GetStreams(context.Background(), findAnyLiveStream(suite.T(), client))
+	streams, err := client.GetStreams(
+		context.Background(),
+		findAnyLiveStream(suite.T(), client),
+		"",
+	)
 	suite.Require().NoError(err)
 	suite.Require().Greater(len(streams), 0)
 
@@ -137,12 +141,8 @@ func (suite *DownloaderIntegrationTestSuite) TestRead() {
 	time.Sleep(10 * time.Second)
 	cancel()
 
-	for {
-		select {
-		case err := <-errChan:
-			suite.Require().Error(err, context.Canceled.Error())
-			return
-		}
+	for err := range errChan {
+		suite.Require().Error(err, context.Canceled.Error())
 	}
 }
 

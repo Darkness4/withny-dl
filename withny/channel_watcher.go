@@ -223,7 +223,7 @@ func (w *ChannelWatcher) HasNewStream(
 		2,
 		60*time.Minute,
 		func() (HasNewStreamResponse, error) {
-			streams, err := w.GetStreams(ctx, w.filterChannelID)
+			streams, err := w.GetStreams(ctx, w.filterChannelID, w.params.PassCode)
 			if err != nil {
 				if !errors.Is(err, api.HTTPError{}) {
 					if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
@@ -482,7 +482,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbac
 	chatDownloadCtx, chatDownloadCancel := context.WithCancel(ctx)
 	if w.params.WriteChat {
 		go func() {
-			if err := DownloadChat(chatDownloadCtx, w.Client, Chat{
+			if err := DownloadChat(chatDownloadCtx, api.Scraper{Client: w.Client}, Chat{
 				ChannelID:      channelID,
 				OutputFileName: fnameChat,
 			}); err != nil {

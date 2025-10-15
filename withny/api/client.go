@@ -346,16 +346,23 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 }
 
 // GetStreams will fetch the streams for the given channelID.
-func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsResponse, error) {
+func (c *Client) GetStreams(
+	ctx context.Context,
+	channelID string,
+	passCode string,
+) (GetStreamsResponse, error) {
 	u, err := url.Parse(streamsWithRoomsURL)
 	if err != nil {
 		panic(err)
 	}
+	q := u.Query()
 	if channelID != "" {
-		q := u.Query()
 		q.Set("username", channelID)
-		u.RawQuery = q.Encode()
 	}
+	if passCode != "" {
+		q.Set("passCode", passCode)
+	}
+	u.RawQuery = q.Encode()
 
 	req, err := c.NewAuthRequestWithContext(
 		ctx,

@@ -22,8 +22,8 @@ func init() {
 	_ = godotenv.Load(".env.test")
 }
 
-func findAnyLiveStream(t *testing.T, client *api.Client) (username string) {
-	streams, err := client.GetStreams(context.Background(), "")
+func findAnyLiveStream(t *testing.T, client *api.Client, passCode string) (username string) {
+	streams, err := client.GetStreams(context.Background(), "", passCode)
 	require.NoError(t, err)
 
 	if len(streams) == 0 {
@@ -52,6 +52,7 @@ func TestClient(t *testing.T) {
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
+	passCode := ""
 
 	t.Run("Login", func(t *testing.T) {
 		// Act
@@ -82,11 +83,11 @@ func TestClient(t *testing.T) {
 
 	t.Run("Get streams", func(t *testing.T) {
 		// Act
-		username := findAnyLiveStream(t, client)
+		username := findAnyLiveStream(t, client, passCode)
 		err := client.Login(context.Background())
 		require.NoError(t, err)
 
-		streams, err := client.GetStreams(context.Background(), username)
+		streams, err := client.GetStreams(context.Background(), username, passCode)
 
 		// Assert
 		require.NoError(t, err)
@@ -99,7 +100,11 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		streams, err := client.GetStreams(context.Background(), findAnyLiveStream(t, client))
+		streams, err := client.GetStreams(
+			context.Background(),
+			findAnyLiveStream(t, client, passCode),
+			passCode,
+		)
 		require.NoError(t, err)
 		require.Greater(t, len(streams), 0)
 
@@ -115,7 +120,11 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		streams, err := client.GetStreams(context.Background(), findAnyLiveStream(t, client))
+		streams, err := client.GetStreams(
+			context.Background(),
+			findAnyLiveStream(t, client, passCode),
+			passCode,
+		)
 		require.NoError(t, err)
 		require.Greater(t, len(streams), 0)
 

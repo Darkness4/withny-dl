@@ -28,10 +28,10 @@ func TestScraper(t *testing.T) {
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
-	scraper := api.NewScraper(client)
+	scraper := api.Scraper{client}
 
 	t.Run("FindGraphQLAndStreamUUID", func(t *testing.T) {
-		out, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin")
+		out, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin", "")
 		require.NoError(t, err)
 		require.NotEmpty(t, out)
 		fmt.Println(out, suuid)

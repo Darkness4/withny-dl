@@ -2,6 +2,7 @@ package withny
 
 import (
 	"encoding/json"
+	"maps"
 	"time"
 
 	"github.com/Darkness4/withny-dl/withny/api"
@@ -26,6 +27,7 @@ type Params struct {
 	EligibleForCleaningAge time.Duration          `yaml:"eligibleForCleaningAge,omitempty"`
 	DeleteCorrupted        bool                   `yaml:"deleteCorrupted,omitempty"`
 	ExtractAudio           bool                   `yaml:"extractAudio,omitempty"`
+	PassCode               string                 `yaml:"passCode,omitempty"`
 	Labels                 map[string]string      `yaml:"labels,omitempty"`
 	Ignore                 []string               `yaml:"ignore,omitempty"`
 }
@@ -54,6 +56,7 @@ type OptionalParams struct {
 	EligibleForCleaningAge *time.Duration          `yaml:"eligibleForCleaningAge,omitempty"`
 	DeleteCorrupted        *bool                   `yaml:"deleteCorrupted,omitempty"`
 	ExtractAudio           *bool                   `yaml:"extractAudio,omitempty"`
+	PassCode               *string                 `yaml:"passCode,omitempty"`
 	Labels                 map[string]string       `yaml:"labels,omitempty"`
 	Ignore                 []string                `yaml:"ignore,omitempty"`
 }
@@ -77,6 +80,7 @@ var DefaultParams = Params{
 	EligibleForCleaningAge: 48 * time.Hour,
 	DeleteCorrupted:        true,
 	ExtractAudio:           false,
+	PassCode:               "",
 	Labels:                 nil,
 	Ignore:                 []string{},
 }
@@ -134,13 +138,14 @@ func (override *OptionalParams) Override(params *Params) {
 	if override.ExtractAudio != nil {
 		params.ExtractAudio = *override.ExtractAudio
 	}
+	if override.PassCode != nil {
+		params.PassCode = *override.PassCode
+	}
 	if override.Labels != nil {
 		if params.Labels == nil {
 			params.Labels = make(map[string]string)
 		}
-		for k, v := range override.Labels {
-			params.Labels[k] = v
-		}
+		maps.Copy(params.Labels, override.Labels)
 	}
 	if override.Ignore != nil {
 		params.Ignore = override.Ignore
@@ -168,15 +173,14 @@ func (p *Params) Clone() *Params {
 		EligibleForCleaningAge: p.EligibleForCleaningAge,
 		DeleteCorrupted:        p.DeleteCorrupted,
 		ExtractAudio:           p.ExtractAudio,
+		PassCode:               p.PassCode,
 		Ignore:                 make([]string, len(p.Ignore)),
 	}
 
 	// Clone the labels map if it exists
 	if p.Labels != nil {
 		clone.Labels = make(map[string]string)
-		for k, v := range p.Labels {
-			clone.Labels[k] = v
-		}
+		maps.Copy(clone.Labels, p.Labels)
 	}
 
 	// Clone the ignore slice

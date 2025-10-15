@@ -29,8 +29,8 @@ func TestWebSocket(t *testing.T) {
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
-	scraper := api.NewScraper(client)
-	wsURL, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin")
+	scraper := api.Scraper{client}
+	wsURL, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin", "")
 	require.NoError(t, err)
 	ws := api.NewCommentWebSocket(client, wsURL)
 

@@ -15,13 +15,6 @@ type Scraper struct {
 	*Client
 }
 
-// NewScraper creates a new Scraper.
-//
-// A scraper is needed since Withny is using SSR.
-func NewScraper(client *Client) *Scraper {
-	return &Scraper{client}
-}
-
 // FetchGraphQLAndStreamUUID finds the GraphQL endpoint.
 //
 // The GraphQL endpoint is hard-coded on the website and uses AWS AppSync.
@@ -30,13 +23,14 @@ func NewScraper(client *Client) *Scraper {
 func (s *Scraper) FetchGraphQLAndStreamUUID(
 	ctx context.Context,
 	channelID string,
+	passCode string,
 ) (endpoint, suuid string, err error) {
-	req, err := s.NewAuthRequestWithContext(
-		ctx,
-		"GET",
-		fmt.Sprintf("https://www.withny.fun/channels/%s", channelID),
-		nil,
-	)
+	channelURL := fmt.Sprintf("https://www.withny.fun/channels/%s", channelID)
+	if passCode != "" {
+		// unsafe join, but it's small so that's fine
+		channelURL = fmt.Sprintf("%s?passCode=%s", channelURL, passCode)
+	}
+	req, err := s.NewAuthRequestWithContext(ctx, "GET", channelURL, nil)
 	if err != nil {
 		panic(err)
 	}

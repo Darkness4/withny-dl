@@ -45,7 +45,7 @@ type GetStreamsResponseElement struct {
 	Price           json.Number `json:"price"`
 	StreamingMethod string      `json:"streamingMethod"`
 	StartedAt       time.Time   `json:"startedAt"`
-	ClosedAt        interface{} `json:"closedAt"`
+	ClosedAt        any         `json:"closedAt"`
 	DeviceID        json.Number `json:"deviceId"`
 	Cast            Cast        `json:"cast"`
 	HasTicket       bool        `json:"hasTicket"`

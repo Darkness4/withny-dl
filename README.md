@@ -186,6 +186,8 @@ channels:
       - 'admin'
 
   'admin':
+    ## Set the passcode to access channel (optional, default: "").
+    passCode: ""
     labels:
       EnglishName: Admin
 ```
@@ -310,6 +312,9 @@ defaultParams:
   eligibleForCleaningAge: '48h'
   ## Delete corrupted .ts recordings. (default: true)
   deleteCorrupted: true
+  ## Set the passcode to access the channels (optional, default: "").
+  ## We recommend to set it per-channel though. See channels.<id>.passCode.
+  passCode: ""
   ## Generate an audio-only copy of the stream. (default: false)
   extractAudio: true
   ## Map of key/value strings.
@@ -322,6 +327,7 @@ defaultParams:
 ## The keys are the channel IDs/handles without the '@'.
 channels:
   'admin':
+
     labels:
       EnglishName: Admin
 
