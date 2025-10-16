@@ -73,21 +73,21 @@ type CastSocialMediaAccount struct {
 
 // AgencySecret is the agency secret of the cast.
 type AgencySecret struct {
-	ID          int64  `json:"id"`
-	UUID        string `json:"uuid"`
-	ChannelName string `json:"username"`
-	Name        string `json:"name"`
+	ID          json.Number `json:"id"`
+	UUID        string      `json:"uuid"`
+	ChannelName string      `json:"username"`
+	Name        string      `json:"name"`
 }
 
 // User is the user of the stream.
 type User struct {
-	ID              int64  `json:"id"`
-	UUID            string `json:"uuid"`
-	Username        string `json:"username"`
-	Name            string `json:"name"`
-	ProfileText     string `json:"profileText"`
-	ProfileImageURL string `json:"profileImageUrl"`
-	HeaderImageURL  string `json:"headerImageUrl"`
+	ID              json.Number `json:"id"`
+	UUID            string      `json:"uuid"`
+	Username        string      `json:"username"`
+	Name            string      `json:"name"`
+	ProfileText     string      `json:"profileText"`
+	ProfileImageURL string      `json:"profileImageUrl"`
+	HeaderImageURL  string      `json:"headerImageUrl"`
 }
 
 // WSCommentResponse is the response of the WebSocket GraphQL Comments API.
