@@ -4,6 +4,8 @@ package withny_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -71,6 +73,9 @@ func (suite *ChannelWatcherIntegrationTestSuite) TestHasNewStream() {
 	suite.Require().Equal(true, res.HasNewStream)
 	suite.Require().NotEmpty(res.Stream)
 	suite.Require().NotEmpty(res.PlaybackURL)
+
+	b, _ := json.MarshalIndent(res.Stream, "", "  ")
+	fmt.Println(string(b))
 }
 
 func TestChannelWatcherIntegrationTestSuite(t *testing.T) {

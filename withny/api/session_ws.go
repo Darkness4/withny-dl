@@ -175,9 +175,12 @@ func FetchStreamMetadataSync(
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial websocket: %w", err)
 	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
 
 	streamsCh := make(chan *GetStreamsResponseElement, 1)
+	defer close(streamsCh)
 	errCh := make(chan error, 1)
+	defer close(errCh)
 	go func() {
 		errCh <- ws.Watch(ctx, conn, streamsCh)
 	}()
