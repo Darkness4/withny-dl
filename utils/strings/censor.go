@@ -1,3 +1,4 @@
+// Package strings handle various strings manipulation.
 package strings
 
 import (

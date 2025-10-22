@@ -227,10 +227,9 @@ func (w *ChannelWatcher) HasNewStream(
 			if w.filterChannelID == "" {
 				// use this logic when we want to download any channel
 				return w.hasNewStreamAll(ctx)
-			} else {
-				// use this logic when we want to download a specific channel
-				return w.hasNewStreamSpecific(ctx, w.filterChannelID)
 			}
+			// use this logic when we want to download a specific channel
+			return w.hasNewStreamSpecific(ctx, w.filterChannelID)
 		},
 	)
 	if err != nil {

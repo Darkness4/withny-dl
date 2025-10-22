@@ -1,3 +1,4 @@
+// Package socketio provides the socket.io handlers.
 package socketio
 
 import (
@@ -6,23 +7,35 @@ import (
 )
 
 var (
+	// ErrInvalidVersion is returned when the message version is invalid.
 	ErrInvalidVersion = errors.New("unhandled message version")
-	ErrInvalidType    = errors.New("unhandled message type")
-	ErrInvalidPacket  = errors.New("invalid packet")
+	// ErrInvalidType is returned when the message type is invalid.
+	ErrInvalidType = errors.New("unhandled message type")
+	// ErrInvalidPacket is returned when the packet is invalid.
+	ErrInvalidPacket = errors.New("invalid packet")
 )
 
+// MessageType is a socket.io message type.
 type MessageType byte
 
 const (
+	// MessageTypeConnect used during the connection to a namespace.
 	MessageTypeConnect MessageType = iota
+	// MessageTypeDisconnect used when disconnecting from a namespace.
 	MessageTypeDisconnect
+	// MessageTypeEvent used to send data to the other side.
 	MessageTypeEvent
+	// MessageTypeAck used to acknowledge an event.
 	MessageTypeAck
+	// MessageTypeConnectError used during the connection to a namespace.
 	MessageTypeConnectError
+	// MessageTypeBinaryEvent ysed to send binary data to the other side.
 	MessageTypeBinaryEvent
+	// MessageTypeBinaryAck ysed to acknowledge an event (the response includes binary data).
 	MessageTypeBinaryAck
 )
 
+// MessageV4 is a socket.io v4 message.
 type MessageV4 struct {
 	Type        MessageType
 	Attachments int
@@ -31,6 +44,7 @@ type MessageV4 struct {
 	Payload     []byte
 }
 
+// UnmarshalMessageType unmarshals a byte into a MessageType.
 func UnmarshalMessageType(data byte) (MessageType, error) {
 	switch data {
 	case 0:
