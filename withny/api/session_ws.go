@@ -115,7 +115,7 @@ func (w *SessionWebSocket) Watch(
 		case websocket.MessageText:
 			decoded, err := socketio.UnmarshalV4(msg)
 			if err != nil {
-				w.log.Err(err).Str("msg", string(msg)).Msg("failed to unmarshal message")
+				w.log.Trace().Err(err).Str("msg", string(msg)).Msg("failed to unmarshal message")
 				continue
 			}
 
