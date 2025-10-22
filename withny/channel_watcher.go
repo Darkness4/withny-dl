@@ -347,6 +347,18 @@ func (w *ChannelWatcher) hasNewStreamSpecific(
 		return HasNewStreamResponse{}, fmt.Errorf("failed to fetch stream metadata: %w", err)
 	}
 
+	w.processingStreamsLock.Lock()
+	_, ok := w.processingStreams[stream.UUID]
+	w.processingStreamsLock.Unlock()
+	if ok {
+		// Stream is being processed.
+		return HasNewStreamResponse{
+			HasNewStream: false,
+		}, nil
+	}
+
+	// Stream is not being processed, check if it is online.
+
 	getUserResp, err := w.GetUser(ctx, channelID)
 	if err != nil {
 		var apiError api.HTTPError

@@ -105,7 +105,7 @@ func (w *SessionWebSocket) Watch(
 			var closeError websocket.CloseError
 			if errors.As(err, &closeError) {
 				if closeError.Code == websocket.StatusNormalClosure {
-					w.log.Info().Msg("websocket closed cleanly")
+					w.log.Debug().Msg("websocket closed cleanly")
 					return io.EOF
 				}
 			}
@@ -178,9 +178,7 @@ func FetchStreamMetadataSync(
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
 	streamsCh := make(chan *GetStreamsResponseElement, 1)
-	defer close(streamsCh)
 	errCh := make(chan error, 1)
-	defer close(errCh)
 	go func() {
 		errCh <- ws.Watch(ctx, conn, streamsCh)
 	}()
