@@ -15,12 +15,12 @@ type Scraper struct {
 	*Client
 }
 
-// FetchGraphQLAndStreamUUID finds the GraphQL endpoint.
+// FetchCommentsGraphQLAndStreamUUID finds the GraphQL endpoint.
 //
 // The GraphQL endpoint is hard-coded on the website and uses AWS AppSync.
 // Technically, we could just hard-code it too, but to avoid any "unexpected" changes,
 // we'll just scrape it.
-func (s *Scraper) FetchGraphQLAndStreamUUID(
+func (s *Scraper) FetchCommentsGraphQLAndStreamUUID(
 	ctx context.Context,
 	channelID string,
 	passCode string,

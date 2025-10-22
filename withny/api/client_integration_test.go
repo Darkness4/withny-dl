@@ -23,7 +23,7 @@ func init() {
 }
 
 func findAnyLiveStream(t *testing.T, client *api.Client, passCode string) (username string) {
-	streams, err := client.GetStreams(context.Background(), "", passCode)
+	streams, err := client.GetStreams(context.Background(), "miyasehumi", passCode)
 	require.NoError(t, err)
 
 	if len(streams) == 0 {
@@ -83,11 +83,10 @@ func TestClient(t *testing.T) {
 
 	t.Run("Get streams", func(t *testing.T) {
 		// Act
-		username := findAnyLiveStream(t, client, passCode)
 		err := client.Login(context.Background())
 		require.NoError(t, err)
 
-		streams, err := client.GetStreams(context.Background(), username, passCode)
+		streams, err := client.GetStreams(context.Background(), "miyasehumi", "HUmi")
 
 		// Assert
 		require.NoError(t, err)

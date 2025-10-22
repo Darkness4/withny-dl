@@ -44,12 +44,15 @@ type GetStreamsResponseElement struct {
 	BillingMode     string      `json:"billingMode"`
 	Price           json.Number `json:"price"`
 	StreamingMethod string      `json:"streamingMethod"`
-	PassCode        any         `json:"passCode"`
+	PassCode        *string     `json:"passCode"`
 	StartedAt       time.Time   `json:"startedAt"`
 	ClosedAt        any         `json:"closedAt"`
 	DeviceID        json.Number `json:"deviceId"`
-	Cast            Cast        `json:"cast"`
 	HasTicket       bool        `json:"hasTicket"`
+
+	// Cast is null when fetching from websocket.
+	// Don't use this field and prefer the one in MetaData.
+	Cast *Cast `json:"cast"`
 }
 
 // Cast is the cast of the user.

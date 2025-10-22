@@ -268,7 +268,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 
 		go func(channelID string, params *withny.Params) {
 			defer wg.Done()
-			withny.NewChannelWatcher(client, params, channelID).Watch(ctx)
+			withny.NewChannelWatcher(&api.Scraper{Client: client}, params, channelID).Watch(ctx)
 
 			select {
 			case <-ctx.Done():

@@ -13,13 +13,21 @@ import (
 	"github.com/Darkness4/withny-dl/utils/secret"
 	"github.com/Darkness4/withny-dl/withny"
 	"github.com/Darkness4/withny-dl/withny/api"
+	"github.com/joho/godotenv"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 )
+
+func init() {
+	log.Logger = log.Logger.With().Caller().Logger()
+	_ = godotenv.Load(".env")
+	_ = godotenv.Load(".env.test")
+}
 
 type ChannelWatcherIntegrationTestSuite struct {
 	suite.Suite
 	ctx    context.Context
-	client *api.Client
+	client *api.Scraper
 	impl   *withny.ChannelWatcher
 }
 
@@ -28,12 +36,12 @@ func (suite *ChannelWatcherIntegrationTestSuite) BeforeTest(suiteName, testName 
 	if err != nil {
 		panic(err)
 	}
-	suite.client = api.NewClient(
+	suite.client = &api.Scraper{Client: api.NewClient(
 		&http.Client{Jar: jar},
 		secret.CredentialsFromEnv{},
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		api.WithClearCredentialCacheOnFailureAfter(300),
-	)
+	)}
 	suite.ctx = context.Background()
 	suite.impl = withny.NewChannelWatcher(suite.client, &withny.Params{
 		PacketLossMax:          20,

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCommentWebSocket(t *testing.T) {
+func TestSessionWebSocket(t *testing.T) {
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	require.NoError(t, err)
 	hclient := &http.Client{
@@ -30,15 +30,11 @@ func TestCommentWebSocket(t *testing.T) {
 		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
 	scraper := api.Scraper{client}
-	wsURL, suuid, err := scraper.FetchCommentsGraphQLAndStreamUUID(
-		context.Background(),
-		"admin",
-		"",
-	)
+	_, suuid, err := scraper.FetchCommentsGraphQLAndStreamUUID(context.Background(), "admin", "")
 	require.NoError(t, err)
-	ws := api.NewCommentWebSocket(client, wsURL)
+	ws := api.NewSessionWebSocket(client, suuid, "")
 
-	t.Run("WatchComments", func(t *testing.T) {
+	t.Run("Watch", func(t *testing.T) {
 		ctx := context.Background()
 		err := client.Login(ctx)
 		require.NoError(t, err)
@@ -46,13 +42,13 @@ func TestCommentWebSocket(t *testing.T) {
 		conn, err := ws.Dial(ctx)
 		require.NoError(t, err)
 
-		commentsCh := make(chan *api.Comment, 10)
-		go ws.WatchComments(ctx, conn, suuid, commentsCh)
+		streamsCh := make(chan *api.GetStreamsResponseElement, 10)
+		go ws.Watch(ctx, conn, streamsCh)
 
 		for {
 			select {
-			case comment := <-commentsCh:
-				t.Log(comment)
+			case stream := <-streamsCh:
+				t.Log(stream)
 			case <-time.After(10 * time.Second):
 				return
 			}
