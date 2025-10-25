@@ -326,10 +326,11 @@ func (w *ChannelWatcher) hasNewStreamSpecific(
 	ctx context.Context,
 	channelID string,
 ) (HasNewStreamResponse, error) {
-	_, suuid, err := w.FetchCommentsGraphQLAndStreamUUID(ctx, channelID, w.params.PassCode)
+	suuid, err := w.FetchStreamUUID(ctx, channelID, w.params.PassCode)
 	if err != nil {
 		err := fmt.Errorf(
-			"failed to fetch gql and stream uuid (does the channel exists?): %w",
+			"failed to check if channel %s has a new stream: %w",
+			channelID,
 			err,
 		)
 		if err := notifier.NotifyError(ctx, "", w.params.Labels, err); err != nil {
