@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	ErrNoGQLFound        = errors.New("no gql url found in body")
+	// ErrNoGQLFound is returned when the GraphQL endpoint is not found in the body.
+	ErrNoGQLFound = errors.New("no gql url found in body")
+	// ErrNoStreamUUIDFound is returned when the stream UUID is not found in the body.
 	ErrNoStreamUUIDFound = errors.New("no suuid found in body")
 )
 
