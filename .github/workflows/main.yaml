@@ -190,7 +190,7 @@ jobs:
 
       - name: Upload artifacts
         if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-binaries
           path: /tmp/artifacts
@@ -242,7 +242,7 @@ jobs:
           mv /tmp/out/withny-dl-windows-amd64.exe /tmp/artifacts/withny-dl-windows-amd64.exe
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-binaries
           path: /tmp/artifacts
@@ -295,7 +295,7 @@ jobs:
           mv /tmp/out/linux_arm64/withny-dl-darwin-arm64 /tmp/artifacts/withny-dl-darwin-arm64
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: osx-binaries
           path: /tmp/artifacts
@@ -315,7 +315,7 @@ jobs:
     needs: [build-darwin]
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: osx-binaries
 
@@ -337,7 +337,7 @@ jobs:
     needs: [build-windows]
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: windows-binaries
 
@@ -378,19 +378,19 @@ jobs:
           git fetch --force --tags --depth 1
 
       - name: Download linux artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: linux-binaries
           path: target
 
       - name: Download windows artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: windows-binaries
           path: target
 
       - name: Download osx artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: osx-binaries
           path: target
