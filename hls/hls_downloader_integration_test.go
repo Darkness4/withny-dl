@@ -108,7 +108,6 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 		suite.client,
 		playlist.URL,
 		hls.WithPacketLossMax(8),
-		hls.WithLogger(&log.Logger),
 	)
 }
 

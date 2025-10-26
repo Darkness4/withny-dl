@@ -12,7 +12,6 @@ import (
 	"github.com/Darkness4/withny-dl/socketio"
 	"github.com/Darkness4/withny-dl/utils/strings"
 	"github.com/coder/websocket"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,8 +23,6 @@ type SessionWebSocket struct {
 	url        *neturl.URL
 	streamUUID string
 	passCode   string
-
-	log *zerolog.Logger
 }
 
 // NewSessionWebSocket creates a new WebSocket.
@@ -34,8 +31,6 @@ func NewSessionWebSocket(
 	streamUUID string,
 	passCode string,
 ) *SessionWebSocket {
-	censoredPassCode := strings.Censor(passCode, 4, "*")
-	logger := log.With().Str("streamUUID", streamUUID).Str("passCode", censoredPassCode).Logger()
 	u, err := neturl.Parse(socketIOURL)
 	if err != nil {
 		panic(err)
@@ -50,17 +45,21 @@ func NewSessionWebSocket(
 		url:        u,
 		streamUUID: streamUUID,
 		passCode:   passCode,
-		log:        &logger,
 	}
 	return w
 }
 
 // Dial connects to the WebSocket server.
 func (w *SessionWebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
+	log := log.Ctx(ctx).
+		With().
+		Str("streamID", w.streamUUID).
+		Str("passCode", strings.Censor(w.passCode, 4, "*")).
+		Logger()
 	// Build header query which is the base64 encoded value of the json of authorization and host.
 	creds, err := w.credentialsCache.Get()
 	if err != nil {
-		w.log.Err(err).Msg("failed to get cached credentials")
+		log.Err(err).Msg("failed to get cached credentials")
 	}
 	q := w.url.Query()
 	q.Set("uuid", w.streamUUID)
@@ -78,7 +77,7 @@ func (w *SessionWebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 		},
 	})
 	if err != nil {
-		w.log.Err(err).Msg("failed to dial websocket")
+		log.Err(err).Msg("failed to dial websocket")
 		return nil, err
 	}
 	conn.SetReadLimit(10485760) // 10 MiB
@@ -91,10 +90,16 @@ func (w *SessionWebSocket) Watch(
 	conn *websocket.Conn,
 	streams chan<- *GetStreamsResponseElement,
 ) error {
+	log := log.Ctx(ctx).
+		With().
+		Str("streamID", w.streamUUID).
+		Str("passCode", strings.Censor(w.passCode, 4, "*")).
+		Logger()
+
 	// Connection init
 	go func() {
 		if err := w.ConnectionInit(ctx, conn); err != nil {
-			w.log.Err(err).Msg("failed to init connection")
+			log.Err(err).Msg("failed to init connection")
 		}
 	}()
 
@@ -105,7 +110,7 @@ func (w *SessionWebSocket) Watch(
 			var closeError websocket.CloseError
 			if errors.As(err, &closeError) {
 				if closeError.Code == websocket.StatusNormalClosure {
-					w.log.Debug().Msg("websocket closed cleanly")
+					log.Debug().Msg("websocket closed cleanly")
 					return io.EOF
 				}
 			}
@@ -115,7 +120,7 @@ func (w *SessionWebSocket) Watch(
 		case websocket.MessageText:
 			decoded, err := socketio.UnmarshalV4(msg)
 			if err != nil {
-				w.log.Trace().Err(err).Str("msg", string(msg)).Msg("failed to unmarshal message")
+				log.Trace().Err(err).Str("msg", string(msg)).Msg("failed to unmarshal message")
 				continue
 			}
 
@@ -123,11 +128,11 @@ func (w *SessionWebSocket) Watch(
 
 			var payload []json.RawMessage
 			if err := json.Unmarshal(decoded.Payload, &payload); err != nil {
-				w.log.Trace().Err(err).Any("msg", decoded).Msg("failed to unmarshal payload")
+				log.Trace().Err(err).Any("msg", decoded).Msg("failed to unmarshal payload")
 				continue
 			}
 			if len(payload) != 2 {
-				w.log.Trace().
+				log.Trace().
 					Any("msg", decoded).
 					Any("payload", payload).
 					Msg("ignoring unwanted payload (wrong size)")
@@ -135,11 +140,11 @@ func (w *SessionWebSocket) Watch(
 			}
 			var typ string
 			if err := json.Unmarshal(payload[0], &typ); err != nil {
-				w.log.Err(err).Any("msg", decoded).Msg("failed to unmarshal payload type")
+				log.Err(err).Any("msg", decoded).Msg("failed to unmarshal payload type")
 				continue
 			}
 			if typ != "stream" {
-				w.log.Trace().
+				log.Trace().
 					Any("msg", decoded).
 					Str("type", typ).
 					Msg("ignoring unwanted payload (wrong type)")
@@ -148,7 +153,7 @@ func (w *SessionWebSocket) Watch(
 
 			var stream GetStreamsResponseElement
 			if err := json.Unmarshal(payload[1], &stream); err != nil {
-				w.log.Err(err).Any("msg", decoded).Msg("failed to unmarshal payload")
+				log.Err(err).Any("msg", decoded).Msg("failed to unmarshal payload")
 				continue
 			}
 			streams <- &stream

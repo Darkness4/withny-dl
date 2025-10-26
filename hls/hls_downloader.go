@@ -15,7 +15,7 @@ import (
 
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
 	"github.com/Darkness4/withny-dl/withny/api"
-	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 )
 
@@ -66,13 +66,6 @@ func WithPlaylistRetries(playlistRetries int) DownloaderOption {
 	}
 }
 
-// WithLogger sets the logger for the Downloader.
-func WithLogger(log *zerolog.Logger) DownloaderOption {
-	return func(d *Downloader) {
-		d.log = log
-	}
-}
-
 // Downloader is used to download HLS streams.
 type Downloader struct {
 	*api.Client
@@ -80,7 +73,6 @@ type Downloader struct {
 	fragmentRetries int
 	playlistRetries int
 
-	log *zerolog.Logger
 	url string
 
 	// ready is used to notify that the downloader is running.
@@ -94,11 +86,9 @@ func NewDownloader(
 	url string,
 	opts ...DownloaderOption,
 ) *Downloader {
-	defaultLog := zerolog.Nop()
 	d := Downloader{
 		Client: client,
 		url:    url,
-		log:    &defaultLog,
 	}
 
 	for _, opt := range opts {
@@ -110,6 +100,9 @@ func NewDownloader(
 
 // GetFragmentURLs fetches the fragment URLs from the HLS manifest.
 func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) {
+	log := log.Ctx(ctx).With().Str("url", hls.url).Logger()
+	ctx = log.WithContext(ctx)
+
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
@@ -129,7 +122,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 
 		resp, err := hls.Do(req)
 		if err != nil {
-			hls.log.Err(err).Msg("failed to fetch fragment URLs")
+			log.Err(err).Msg("failed to fetch fragment URLs")
 			return []Fragment{}, err
 		}
 
@@ -139,7 +132,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 			url, _ := url.Parse(hls.url)
 
 			if resp.StatusCode == 403 {
-				hls.log.Error().
+				log.Error().
 					Str("url", url.String()).
 					Int("response.status", resp.StatusCode).
 					Str("response.body", string(body)).
@@ -148,7 +141,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 				metrics.Downloads.Errors.Add(ctx, 1)
 				return []Fragment{}, ErrHLSForbidden
 			} else if resp.StatusCode == 404 {
-				hls.log.Warn().
+				log.Warn().
 					Str("url", url.String()).
 					Int("response.status", resp.StatusCode).
 					Str("response.body", string(body)).
@@ -162,7 +155,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 					Method: "GET",
 					URL:    url.String(),
 				}
-				hls.log.Warn().
+				log.Warn().
 					Str("url", lastHTTPError.URL).
 					Int("response.status", lastHTTPError.Status).
 					Str("response.body", lastHTTPError.Body).
@@ -173,7 +166,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 				continue
 			}
 
-			hls.log.Error().
+			log.Error().
 				Str("url", url.String()).
 				Int("response.status", resp.StatusCode).
 				Str("response.body", string(body)).
@@ -192,7 +185,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 		break
 	}
 	if count > hls.playlistRetries {
-		hls.log.Error().
+		log.Error().
 			Str("url", lastHTTPError.URL).
 			Int("response.status", lastHTTPError.Status).
 			Str("response.body", lastHTTPError.Body).
@@ -218,7 +211,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 			ts := strings.TrimPrefix(line, "#EXT-X-PROGRAM-DATE-TIME:")
 			t, err := time.Parse(time.RFC3339, ts)
 			if err != nil {
-				hls.log.Warn().
+				log.Warn().
 					Err(err).
 					Str("ts", ts).
 					Msg("failed to parse time, using now")
@@ -228,7 +221,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 		case strings.HasPrefix(line, "https://") && !exists[line]:
 			_, err := url.Parse(line)
 			if err != nil {
-				hls.log.Warn().
+				log.Warn().
 					Err(err).
 					Msg("m3u8 returned a bad url, skipping that line")
 				continue
@@ -244,7 +237,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 
 	if !hls.ready {
 		hls.ready = true
-		hls.log.Info().Msg("downloading")
+		log.Info().Msg("downloading")
 	}
 	return fragments, nil
 }
@@ -254,7 +247,7 @@ func (hls *Downloader) fillQueue(
 	ctx context.Context,
 	fragChan chan<- Fragment,
 ) (err error) {
-	hls.log.Debug().Msg("started to fill queue")
+	log.Debug().Msg("started to fill queue")
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "hls.fillQueue")
 	defer span.End()
 
@@ -276,7 +269,7 @@ func (hls *Downloader) fillQueue(
 	for {
 		select {
 		case <-ticker.C:
-			hls.log.Debug().Msg("still downloading")
+			log.Debug().Msg("still downloading")
 		default:
 			// Do nothing if the ticker hasn't ticked yet
 		}
@@ -287,14 +280,14 @@ func (hls *Downloader) fillQueue(
 
 			// fillQueue will exits here because of a 404
 			if errors.Is(err, ErrStreamEnded) {
-				hls.log.Info().Msg("stream has ended")
+				log.Info().Msg("stream has ended")
 				return io.EOF
 			}
 
 			// Failed to fetch playlist in time
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, syscall.ECONNRESET) {
 				errorCount++
-				hls.log.Err(err).
+				log.Err(err).
 					Int("error.count", errorCount).
 					Int("error.max", hls.packetLossMax).
 					Msg("GetFragmentURLs failed, retrying")
@@ -307,7 +300,7 @@ func (hls *Downloader) fillQueue(
 				}
 			}
 
-			hls.log.Err(err).Msg("GetFragmentURLs failed")
+			log.Err(err).Msg("GetFragmentURLs failed")
 
 			// It can also exit here on context cancelled
 			return err
@@ -322,7 +315,7 @@ func (hls *Downloader) fillQueue(
 				var fragmentTime time.Time
 				if useTimeBasedSorting {
 					if u.Time.Equal(timeZero) {
-						hls.log.Warn().Msg("fragment time is zero, use name based sorting")
+						log.Warn().Msg("fragment time is zero, use name based sorting")
 						useTimeBasedSorting = false
 					} else {
 						fragmentTime = u.Time
@@ -339,7 +332,7 @@ func (hls *Downloader) fillQueue(
 		nNew := len(fragments) - newIdx
 		if nNew > 0 {
 			lastFragmentReceivedTimestamp = time.Now()
-			hls.log.Trace().Any("fragments", fragments[newIdx:]).Msg("found new fragments")
+			log.Trace().Any("fragments", fragments[newIdx:]).Msg("found new fragments")
 		}
 
 		for _, f := range fragments[newIdx:] {
@@ -352,7 +345,7 @@ func (hls *Downloader) fillQueue(
 
 		// fillQueue will also exit here if the stream has ended (and do not send any fragment)
 		if time.Since(lastFragmentReceivedTimestamp) > 5*time.Minute {
-			hls.log.Warn().
+			log.Warn().
 				Time("lastTime", lastFragmentReceivedTimestamp).
 				Msg("timeout receiving new fragments, abort")
 			return io.EOF
@@ -367,6 +360,8 @@ func (hls *Downloader) download(
 	w io.Writer,
 	url string,
 ) error {
+	log := log.Ctx(ctx).With().Str("url", url).Logger()
+
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
@@ -381,7 +376,7 @@ func (hls *Downloader) download(
 		req.Header.Set("Origin", "https://www.withny.fun")
 		resp, err := hls.Do(req)
 		if err != nil {
-			hls.log.Err(err).Msg("failed to download fragment")
+			log.Err(err).Msg("failed to download fragment")
 			return err
 		}
 
@@ -389,10 +384,9 @@ func (hls *Downloader) download(
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			if resp.StatusCode == 403 {
-				hls.log.Error().
+				log.Error().
 					Int("response.status", resp.StatusCode).
 					Str("response.body", string(body)).
-					Str("url", url).
 					Str("method", "GET").
 					Msg("http error")
 				metrics.Downloads.Errors.Add(ctx, 1)
@@ -404,8 +398,7 @@ func (hls *Downloader) download(
 					Method: "GET",
 					URL:    url,
 				}
-				hls.log.Warn().
-					Str("url", lastHTTPError.URL).
+				log.Warn().
 					Int("response.status", lastHTTPError.Status).
 					Str("response.body", lastHTTPError.Body).
 					Str("method", lastHTTPError.Method).
@@ -415,8 +408,7 @@ func (hls *Downloader) download(
 				continue
 			}
 
-			hls.log.Error().
-				Str("url", url).
+			log.Error().
 				Int("response.status", resp.StatusCode).
 				Str("response.body", string(body)).
 				Str("method", "GET").
@@ -434,8 +426,7 @@ func (hls *Downloader) download(
 		break
 	}
 	if count > hls.fragmentRetries {
-		hls.log.Error().
-			Str("url", lastHTTPError.URL).
+		log.Error().
 			Int("response.status", lastHTTPError.Status).
 			Str("response.body", lastHTTPError.Body).
 			Str("method", lastHTTPError.Method).
@@ -467,7 +458,9 @@ func (hls *Downloader) Read(
 	ctx context.Context,
 	writer io.Writer,
 ) (err error) {
-	hls.log.Debug().Msg("started to read stream")
+	log := log.Ctx(ctx)
+
+	log.Debug().Msg("started to read stream")
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "hls.Read")
 	defer span.End()
 
@@ -492,18 +485,18 @@ func (hls *Downloader) Read(
 			err := hls.download(ctx, writer, frag.URL)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					hls.log.Info().Msg("skip fragment download because of context canceled")
+					log.Info().Msg("skip fragment download because of context canceled")
 					continue // Continue to wait for fillQueue to finish
 				}
-				hls.log.Err(err).Msg("failed to download fragment")
+				log.Err(err).Msg("failed to download fragment")
 				span.RecordError(err)
 				if err == ErrHLSForbidden {
-					hls.log.Err(err).Msg("stream was interrupted")
+					log.Err(err).Msg("stream was interrupted")
 					cancel()
 					continue // Continue to wait for fillQueue to finish
 				}
 				errorCount++
-				hls.log.Error().
+				log.Error().
 					Int("error.count", errorCount).
 					Int("error.max", hls.packetLossMax).
 					Err(err).
@@ -520,15 +513,15 @@ func (hls *Downloader) Read(
 		case err := <-errChan:
 			defer cancel()
 			if err == nil {
-				hls.log.Panic().Msg("didn't expect a nil error")
+				log.Panic().Msg("didn't expect a nil error")
 			}
 
 			if err == io.EOF {
-				hls.log.Info().Msg("hls downloader exited with success")
+				log.Info().Msg("hls downloader exited with success")
 			} else if errors.Is(err, context.Canceled) {
-				hls.log.Info().Msg("hls downloader canceled")
+				log.Info().Msg("hls downloader canceled")
 			} else {
-				hls.log.Err(err).Msg("hls downloader exited with error")
+				log.Err(err).Msg("hls downloader exited with error")
 			}
 
 			return err
@@ -538,6 +531,8 @@ func (hls *Downloader) Read(
 
 // Probe checks if the stream is ready to be downloaded.
 func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
+	log := log.Ctx(ctx)
+
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
@@ -554,7 +549,7 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 
 	resp, err := hls.Do(req)
 	if err != nil {
-		hls.log.Err(err).Msg("failed to probe stream")
+		log.Err(err).Msg("failed to probe stream")
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -564,7 +559,7 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 
 		switch resp.StatusCode {
 		case 404:
-			hls.log.Warn().
+			log.Warn().
 				Str("url", hls.url).
 				Int("response.status", resp.StatusCode).
 				Str("response.body", string(body)).
@@ -572,7 +567,7 @@ func (hls *Downloader) Probe(ctx context.Context) (bool, error) {
 				Msg("stream not ready")
 			return false, nil
 		default:
-			hls.log.Error().
+			log.Error().
 				Str("url", hls.url).
 				Int("response.status", resp.StatusCode).
 				Str("response.body", string(body)).

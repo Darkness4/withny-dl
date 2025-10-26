@@ -131,7 +131,10 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 				delete(w.processingStreams, res.Stream.UUID)
 				w.processingStreamsLock.Unlock()
 			}()
-			log := log.With().Str("channelID", res.User.Username).Logger()
+			log := log.With().
+				Str("channelID", res.User.Username).
+				Str("streamID", res.Stream.UUID).
+				Logger()
 			ctx = log.WithContext(ctx)
 
 			err := w.Process(ctx, api.MetaData{
