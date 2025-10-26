@@ -545,7 +545,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbac
 		channelID,
 		state.DownloadStateDownloading,
 		state.WithLabels(w.params.Labels),
-		state.WithExtra(map[string]interface{}{
+		state.WithExtra(map[string]any{
 			"metadata": meta,
 		}),
 	)
@@ -602,7 +602,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbac
 		channelID,
 		state.DownloadStatePostProcessing,
 		state.WithLabels(w.params.Labels),
-		state.WithExtra(map[string]interface{}{
+		state.WithExtra(map[string]any{
 			"metadata": meta,
 		}),
 	)

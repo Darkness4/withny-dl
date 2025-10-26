@@ -22,7 +22,7 @@ func Do(
 	if tries <= 0 {
 		log.Panic().Int("tries", tries).Msg("tries is 0 or negative")
 	}
-	for try := 0; try < tries; try++ {
+	for try := range tries {
 		err = fn()
 		if err == nil {
 			return nil
@@ -50,7 +50,7 @@ func DoExponentialBackoff(
 	if tries <= 0 {
 		log.Panic().Int("tries", tries).Msg("tries is 0 or negative")
 	}
-	for try := 0; try < tries; try++ {
+	for try := range tries {
 		err = fn()
 		if err == nil {
 			return nil
@@ -63,10 +63,7 @@ func DoExponentialBackoff(
 			Stringer("backoff", delay).
 			Msg("try failed")
 		time.Sleep(delay)
-		delay = delay * multiplier
-		if delay > maxBackoff {
-			delay = maxBackoff
-		}
+		delay = min(delay*multiplier, maxBackoff)
 	}
 	log.Warn().Err(err).Msg("failed all tries")
 	return err
@@ -83,7 +80,7 @@ func DoWithResult[T any](
 	if tries <= 0 {
 		log.Panic().Int("tries", tries).Msg("tries is 0 or negative")
 	}
-	for try := 0; try < tries; try++ {
+	for try := range tries {
 		result, err = fn()
 		if err == nil {
 			return result, nil
@@ -111,7 +108,7 @@ func DoExponentialBackoffWithResult[T any](
 	if tries <= 0 {
 		log.Panic().Int("tries", tries).Msg("tries is 0 or negative")
 	}
-	for try := 0; try < tries; try++ {
+	for try := range tries {
 		result, err = fn()
 		if err == nil {
 			return result, nil
@@ -128,10 +125,7 @@ func DoExponentialBackoffWithResult[T any](
 			"try failed",
 		)
 		time.Sleep(delay)
-		delay = delay * time.Duration(multiplier)
-		if delay > maxBackoff {
-			delay = maxBackoff
-		}
+		delay = min(delay*time.Duration(multiplier), maxBackoff)
 	}
 	log.Warn().Err(err).Msg("failed all tries")
 	return result, err
