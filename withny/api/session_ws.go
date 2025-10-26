@@ -110,7 +110,7 @@ func (w *SessionWebSocket) Watch(
 			var closeError websocket.CloseError
 			if errors.As(err, &closeError) {
 				if closeError.Code == websocket.StatusNormalClosure {
-					log.Debug().Msg("websocket closed cleanly")
+					log.Trace().Msg("websocket closed cleanly")
 					return io.EOF
 				}
 			}
