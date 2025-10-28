@@ -329,6 +329,8 @@ defaultParams:
 ## The keys are the channel IDs/handles without the '@'.
 channels:
   'admin':
+    ## Set the passcode to access channel (optional, default: "").
+    passCode: ''
     labels:
       EnglishName: Admin
 
