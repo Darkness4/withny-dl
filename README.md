@@ -151,6 +151,7 @@ To configure the watcher, you must provide a configuration file. The configurati
 Minimal configuration:
 
 ```yaml
+# credentials.yaml
 # See below for more details.
 token: 'ey...'
 refreshToken: 'abc...'
@@ -159,6 +160,7 @@ refreshToken: 'abc...'
 ```
 
 ```yaml
+# config.yaml
 credentialsFile: 'credentials.yaml'
 ## Withny-dl refreshes the token and must store it somewhere.
 ## The file is encrypted.
@@ -187,7 +189,7 @@ channels:
 
   'admin':
     ## Set the passcode to access channel (optional, default: "").
-    passCode: ""
+    passCode: ''
     labels:
       EnglishName: Admin
 ```
@@ -314,7 +316,7 @@ defaultParams:
   deleteCorrupted: true
   ## Set the passcode to access the channels (optional, default: "").
   ## We recommend to set it per-channel though. See channels.<id>.passCode.
-  passCode: ""
+  passCode: ''
   ## Generate an audio-only copy of the stream. (default: false)
   extractAudio: true
   ## Map of key/value strings.
@@ -327,7 +329,6 @@ defaultParams:
 ## The keys are the channel IDs/handles without the '@'.
 channels:
   'admin':
-
     labels:
       EnglishName: Admin
 
