@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -10,33 +11,34 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	// ErrNoGQLFound is returned when the GraphQL endpoint is not found in the body.
+	ErrNoGQLFound = errors.New("no gql url found in body")
+	// ErrNoStreamUUIDFound is returned when the stream UUID is not found in the body.
+	ErrNoStreamUUIDFound = errors.New("no suuid found in body")
+)
+
 // Scraper is used to scrape the withny website.
 type Scraper struct {
 	*Client
 }
 
-// NewScraper creates a new Scraper.
+// FetchCommentsGraphQLAndStreamUUID finds the GraphQL endpoint.
 //
-// A scraper is needed since Withny is using SSR.
-func NewScraper(client *Client) *Scraper {
-	return &Scraper{client}
-}
-
-// FetchGraphQLAndStreamUUID finds the GraphQL endpoint.
-//
-// The GraphQL endpoint is hard-coded on the website and uses AWS AppSync.
+// The GraphQL endpoint is server-side rendered on the website and uses AWS AppSync.
 // Technically, we could just hard-code it too, but to avoid any "unexpected" changes,
 // we'll just scrape it.
-func (s *Scraper) FetchGraphQLAndStreamUUID(
+func (s *Scraper) FetchCommentsGraphQLAndStreamUUID(
 	ctx context.Context,
 	channelID string,
+	passCode string,
 ) (endpoint, suuid string, err error) {
-	req, err := s.NewAuthRequestWithContext(
-		ctx,
-		"GET",
-		fmt.Sprintf("https://www.withny.fun/channels/%s", channelID),
-		nil,
-	)
+	channelURL := fmt.Sprintf("https://www.withny.fun/channels/%s", channelID)
+	if passCode != "" {
+		// unsafe join, but it's small so that's fine
+		channelURL = fmt.Sprintf("%s?passCode=%s", channelURL, passCode)
+	}
+	req, err := s.NewAuthRequestWithContext(ctx, "GET", channelURL, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +72,7 @@ func findGraphQLEndpointAndStreamUUID(r io.Reader) (endpoint, suuid string, err 
 
 	// Check if a gql was found
 	if gql == "" {
-		return "", "", fmt.Errorf("no gql match found")
+		return "", "", ErrNoGQLFound
 	}
 	decoded, err := strconv.Unquote(gql)
 	if err != nil {
@@ -82,8 +84,57 @@ func findGraphQLEndpointAndStreamUUID(r io.Reader) (endpoint, suuid string, err 
 	// Check if a stream uuid was found
 	matches := streamUUIDRegex.FindStringSubmatch(string(buf))
 	if len(matches) < 2 {
-		return "", "", fmt.Errorf("no suuid match found")
+		return "", "", ErrNoStreamUUIDFound
 	}
 
 	return gql, matches[1], nil
+}
+
+// FetchStreamUUID finds the stream UUID.
+//
+// The Stream UUID is server-side rendered on the website.
+func (s *Scraper) FetchStreamUUID(
+	ctx context.Context,
+	channelID string,
+	passCode string,
+) (suuid string, err error) {
+	channelURL := fmt.Sprintf("https://www.withny.fun/channels/%s", channelID)
+	if passCode != "" {
+		// unsafe join, but it's small so that's fine
+		channelURL = fmt.Sprintf("%s?passCode=%s", channelURL, passCode)
+	}
+	req, err := s.NewAuthRequestWithContext(ctx, "GET", channelURL, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := s.Do(req)
+	if err != nil {
+		log.Err(err).Msg("failed to fetch channel page")
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	suuid, err = fetchStreamUUID(resp.Body)
+	if err != nil {
+		log.Err(err).Msg("failed to find suuid endpoint")
+		return "", err
+	}
+	return suuid, nil
+}
+
+// fetchStreamUUID finds the GraphQL endpoint and stream UUID.
+func fetchStreamUUID(r io.Reader) (suuid string, err error) {
+	buf, err := io.ReadAll(r)
+	if err != nil {
+		log.Err(err).Msg("failed to read body")
+		return "", err
+	}
+	// Check if a stream uuid was found
+	matches := streamUUIDRegex.FindStringSubmatch(string(buf))
+	if len(matches) < 2 {
+		return "", ErrNoStreamUUIDFound
+	}
+
+	return matches[1], nil
 }

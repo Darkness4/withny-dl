@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWebSocket(t *testing.T) {
+func TestCommentWebSocket(t *testing.T) {
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	require.NoError(t, err)
 	hclient := &http.Client{
@@ -29,10 +29,14 @@ func TestWebSocket(t *testing.T) {
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		api.WithClearCredentialCacheOnFailureAfter(300),
 	)
-	scraper := api.NewScraper(client)
-	wsURL, suuid, err := scraper.FetchGraphQLAndStreamUUID(context.Background(), "admin")
+	scraper := api.Scraper{client}
+	wsURL, suuid, err := scraper.FetchCommentsGraphQLAndStreamUUID(
+		context.Background(),
+		"admin",
+		"",
+	)
 	require.NoError(t, err)
-	ws := api.NewWebSocket(client, wsURL)
+	ws := api.NewCommentWebSocket(client, wsURL)
 
 	t.Run("WatchComments", func(t *testing.T) {
 		ctx := context.Background()

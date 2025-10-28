@@ -71,7 +71,6 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 			hls.WithPacketLossMax(ls.Params.PacketLossMax),
 			hls.WithFragmentRetries(ls.Params.FragmentRetries),
 			hls.WithPlaylistRetries(ls.Params.PlaylistRetries),
-			hls.WithLogger(log),
 		)
 
 		if ok, err := try.DoWithResult(5, 5*time.Second, func() (bool, error) {

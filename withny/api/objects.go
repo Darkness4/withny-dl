@@ -44,11 +44,15 @@ type GetStreamsResponseElement struct {
 	BillingMode     string      `json:"billingMode"`
 	Price           json.Number `json:"price"`
 	StreamingMethod string      `json:"streamingMethod"`
+	PassCode        *string     `json:"passCode"`
 	StartedAt       time.Time   `json:"startedAt"`
-	ClosedAt        interface{} `json:"closedAt"`
+	ClosedAt        any         `json:"closedAt"`
 	DeviceID        json.Number `json:"deviceId"`
-	Cast            Cast        `json:"cast"`
 	HasTicket       bool        `json:"hasTicket"`
+
+	// Cast is null when fetching from websocket.
+	// Don't use this field and prefer the one in MetaData.
+	Cast *Cast `json:"cast"`
 }
 
 // Cast is the cast of the user.
@@ -61,6 +65,7 @@ type Cast struct {
 	IsFavorite              bool                     `json:"isFavorite"`
 	CastSocialMediaAccounts []CastSocialMediaAccount `json:"castSocialMediaAccounts"`
 	AgencySecret            AgencySecret             `json:"agencySecret"`
+	User                    User                     `json:"user"`
 }
 
 // CastSocialMediaAccount is the social media account of the cast.
@@ -71,10 +76,21 @@ type CastSocialMediaAccount struct {
 
 // AgencySecret is the agency secret of the cast.
 type AgencySecret struct {
-	ID          int64  `json:"id"`
-	UUID        string `json:"uuid"`
-	ChannelName string `json:"username"`
-	Name        string `json:"name"`
+	ID          json.Number `json:"id"`
+	UUID        string      `json:"uuid"`
+	ChannelName string      `json:"username"`
+	Name        string      `json:"name"`
+}
+
+// User is the user of the stream.
+type User struct {
+	ID              json.Number `json:"id"`
+	UUID            string      `json:"uuid"`
+	Username        string      `json:"username"`
+	Name            string      `json:"name"`
+	ProfileText     string      `json:"profileText"`
+	ProfileImageURL string      `json:"profileImageUrl"`
+	HeaderImageURL  string      `json:"headerImageUrl"`
 }
 
 // WSCommentResponse is the response of the WebSocket GraphQL Comments API.

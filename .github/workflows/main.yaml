@@ -112,12 +112,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Sanitize Branch Name
+        id: sanitize
+        run: echo "SAFE_BRANCH=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+
       - id: docker_meta_dev
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/darkness4/withny-dl
           tags: |
-            dev
+            ${{ github.ref_name == 'main' && 'dev' || format('dev--{0}', steps.sanitize.outputs.SAFE_BRANCH) }}
 
       - name: Build and export dev
         uses: docker/build-push-action@v6
@@ -127,7 +131,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/riscv64
           push: true
           build-args: |
-            VERSION=dev
+            VERSION=${{ github.ref_name == 'main' && 'dev' || format('dev--{0}', steps.sanitize.outputs.SAFE_BRANCH) }}
           tags: ${{ steps.docker_meta_dev.outputs.tags }}
           labels: ${{ steps.docker_meta_dev.outputs.labels }}
           annotations: ${{ steps.docker_meta_dev.outputs.annotations }}

@@ -16,25 +16,26 @@ import (
 // Chat encapsulates the withny chat.
 type Chat struct {
 	ChannelID      string
+	PassCode       string
 	OutputFileName string
 }
 
 // DownloadChat downloads a withny chat.
-func DownloadChat(ctx context.Context, client *api.Client, chat Chat) error {
+func DownloadChat(ctx context.Context, scraper api.Scraper, chat Chat) error {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "withny.downloadChat", trace.WithAttributes(
 		attribute.String("channel_id", chat.ChannelID),
 		attribute.String("fname", chat.OutputFileName),
 	))
 	defer span.End()
 
-	endpoint, suuid, err := api.NewScraper(client).
-		FetchGraphQLAndStreamUUID(ctx, chat.ChannelID)
+	endpoint, suuid, err := scraper.
+		FetchCommentsGraphQLAndStreamUUID(ctx, chat.ChannelID, chat.PassCode)
 	if err != nil {
 		log.Err(err).Msg("failed to find graphql endpoint for chat")
 		return err
 	}
 
-	ws := api.NewWebSocket(client, endpoint)
+	ws := api.NewCommentWebSocket(scraper.Client, endpoint)
 	conn, err := ws.Dial(ctx)
 	if err != nil {
 		log.Err(err).Msg("failed to dial websocket")

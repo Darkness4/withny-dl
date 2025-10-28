@@ -12,7 +12,6 @@ import (
 
 	"github.com/Darkness4/withny-dl/graphql"
 	"github.com/coder/websocket"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -38,27 +37,25 @@ const queryFormat = `subscription MySubscription {
 	}
 }`
 
-// WebSocket is used to interact with the withny WebSocket.
-type WebSocket struct {
+// CommentWebSocket is used to interact with the withny CommentWebSocket.
+type CommentWebSocket struct {
 	*Client
 	url         *neturl.URL
 	realtimeURL *neturl.URL
-	log         *zerolog.Logger
 }
 
-// WSResponse is the response from the WebSocket.
-type WSResponse struct {
+// CommentWSResponse is the response from the WebSocket.
+type CommentWSResponse struct {
 	Type    string          `json:"type"`
 	ID      string          `json:"id"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-// NewWebSocket creates a new WebSocket.
-func NewWebSocket(
+// NewCommentWebSocket creates a new WebSocket.
+func NewCommentWebSocket(
 	client *Client,
 	url string,
-) *WebSocket {
-	logger := log.With().Str("url", url).Logger()
+) *CommentWebSocket {
 	u, err := neturl.Parse(url)
 	if err != nil {
 		panic(err)
@@ -68,21 +65,26 @@ func NewWebSocket(
 		panic(err)
 	}
 	u.Scheme = "wss"
-	w := &WebSocket{
+	w := &CommentWebSocket{
 		Client:      client,
 		url:         u,
 		realtimeURL: rtURL,
-		log:         &logger,
 	}
 	return w
 }
 
 // Dial connects to the WebSocket server.
-func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
+func (w *CommentWebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
+	log := log.Ctx(ctx).
+		With().
+		Str("url", w.realtimeURL.String()).
+		Logger()
+	ctx = log.WithContext(ctx)
+
 	// Build header query which is the base64 encoded value of the json of authorization and host.
 	creds, err := w.credentialsCache.Get()
 	if err != nil {
-		w.log.Err(err).Msg("failed to get cached credentials")
+		log.Err(err).Msg("failed to get cached credentials")
 	}
 	v := map[string]string{
 		"Authorization": "Bearer " + creds.Token,
@@ -90,7 +92,7 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 	}
 	vjson, err := json.Marshal(v)
 	if err != nil {
-		w.log.Err(err).Msg("failed to marshal header")
+		log.Err(err).Msg("failed to marshal header")
 		return nil, err
 	}
 	vb64 := base64.StdEncoding.EncodeToString(vjson)
@@ -109,7 +111,7 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 		Subprotocols: []string{"graphql-ws"},
 	})
 	if err != nil {
-		w.log.Err(err).Msg("failed to dial websocket")
+		log.Err(err).Msg("failed to dial websocket")
 		return nil, err
 	}
 	conn.SetReadLimit(10485760) // 10 MiB
@@ -117,16 +119,22 @@ func (w *WebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 }
 
 // WatchComments listens for comments on the WebSocket.
-func (w *WebSocket) WatchComments(
+func (w *CommentWebSocket) WatchComments(
 	ctx context.Context,
 	conn *websocket.Conn,
 	streamID string,
 	commentChan chan<- *Comment,
 ) error {
+	log := log.Ctx(ctx).
+		With().
+		Str("url", w.realtimeURL.String()).
+		Logger()
+	ctx = log.WithContext(ctx)
+
 	// Connection init
 	go func() {
 		if err := w.ConnectionInit(ctx, conn); err != nil {
-			w.log.Err(err).Msg("failed to init connection")
+			log.Err(err).Msg("failed to init connection")
 		}
 	}()
 
@@ -137,7 +145,7 @@ func (w *WebSocket) WatchComments(
 			var closeError websocket.CloseError
 			if errors.As(err, &closeError) {
 				if closeError.Code == websocket.StatusNormalClosure {
-					w.log.Info().Msg("websocket closed cleanly")
+					log.Info().Msg("websocket closed cleanly")
 					return io.EOF
 				}
 			}
@@ -145,42 +153,42 @@ func (w *WebSocket) WatchComments(
 		}
 		switch msgType {
 		case websocket.MessageText:
-			w.log.Trace().Str("msg", string(msg)).Msg("ws receive")
-			var msgObj WSResponse
+			log.Trace().Str("msg", string(msg)).Msg("ws receive")
+			var msgObj CommentWSResponse
 			if err := json.Unmarshal(msg, &msgObj); err != nil {
-				w.log.Error().Str("msg", string(msg)).Err(err).Msg("failed to decode")
+				log.Error().Str("msg", string(msg)).Err(err).Msg("failed to decode")
 				continue
 			}
 
 			switch msgObj.Type {
 			case "connection_ack":
-				w.log.Info().Msg("ws fully connected")
+				log.Info().Msg("ws fully connected")
 				// Subscribe to comments
 				go func() {
 					if err := w.Subscribe(ctx, conn, streamID); err != nil {
-						w.log.Err(err).Msg("failed to subscribe")
+						log.Err(err).Msg("failed to subscribe")
 					}
 				}()
 			case "start_ack":
-				w.log.Info().Msg("subscription started")
+				log.Info().Msg("subscription started")
 			case "data":
 				var resp WSCommentResponse
 				if err := json.Unmarshal(msgObj.Payload, &resp); err != nil {
-					w.log.Err(err).Msg("failed to decode comment")
+					log.Err(err).Msg("failed to decode comment")
 					continue
 				}
 				commentChan <- &resp.Data.OnPostComment
 			case "ka":
 				// It's a keep alive message!
 			default:
-				w.log.Warn().
+				log.Warn().
 					Str("type", msgObj.Type).
 					Str("msg", string(msg)).
 					Msg("received unhandled msg type")
 			}
 
 		default:
-			w.log.Error().
+			log.Error().
 				Int("type", int(msgType)).
 				Str("msg", string(msg)).
 				Msg("received unhandled msg type")
@@ -189,33 +197,49 @@ func (w *WebSocket) WatchComments(
 }
 
 // ConnectionInit initializes the connection to the WebSocket.
-func (w *WebSocket) ConnectionInit(ctx context.Context, conn *websocket.Conn) error {
+func (w *CommentWebSocket) ConnectionInit(ctx context.Context, conn *websocket.Conn) error {
+	log := log.Ctx(ctx).
+		With().
+		Str("url", w.realtimeURL.String()).
+		Logger()
+	ctx = log.WithContext(ctx)
+
 	initMsgJSON, err := json.Marshal(graphql.ConnectionInit)
 	if err != nil {
-		w.log.Err(err).Msg("failed to marshal connection init")
+		log.Err(err).Msg("failed to marshal connection init")
 		return err
 	}
 	return conn.Write(ctx, websocket.MessageText, initMsgJSON)
 }
 
 // Subscribe subscribes to the WebSocket.
-func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamID string) error {
+func (w *CommentWebSocket) Subscribe(
+	ctx context.Context,
+	conn *websocket.Conn,
+	streamID string,
+) error {
+	log := log.Ctx(ctx).
+		With().
+		Str("url", w.realtimeURL.String()).
+		Logger()
+	ctx = log.WithContext(ctx)
+
 	query := graphql.Query{
 		Query:     fmt.Sprintf(queryFormat, streamID),
-		Variables: map[string]interface{}{},
+		Variables: map[string]any{},
 	}
 	jsonQuery, err := json.Marshal(query)
 	if err != nil {
-		w.log.Err(err).Msg("failed to marshal query")
+		log.Err(err).Msg("failed to marshal query")
 		return err
 	}
 	creds, err := w.credentialsCache.Get()
 	if err != nil {
-		w.log.Err(err).Msg("failed to get cached credentials")
+		log.Err(err).Msg("failed to get cached credentials")
 	}
 	msg := graphql.BuildSubscribeMessage(graphql.SubscribeMessagePayload{
 		Data: string(jsonQuery),
-		Extensions: map[string]interface{}{
+		Extensions: map[string]any{
 			"authorization": map[string]string{
 				"Authorization": creds.TokenType + " " + creds.Token,
 				"host":          w.url.Host,
@@ -224,7 +248,7 @@ func (w *WebSocket) Subscribe(ctx context.Context, conn *websocket.Conn, streamI
 	})
 	msgJSON, err := json.Marshal(msg)
 	if err != nil {
-		w.log.Err(err).Msg("failed to marshal subscribe message")
+		log.Err(err).Msg("failed to marshal subscribe message")
 		return err
 	}
 	return conn.Write(ctx, websocket.MessageText, msgJSON)

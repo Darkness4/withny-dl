@@ -12,7 +12,6 @@ import (
 
 	"github.com/Darkness4/withny-dl/utils/secret"
 	"github.com/Darkness4/withny-dl/withny/api"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -296,7 +295,6 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 		),
 		suite.server.URL,
 		WithPacketLossMax(10),
-		WithLogger(&log.Logger),
 	)
 }
 
@@ -333,7 +331,6 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 			),
 			suite.server.URL,
 			WithPlaylistRetries(2),
-			WithLogger(&log.Logger),
 		)
 
 		// Act
@@ -371,7 +368,6 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 			),
 			suite.server.URL,
 			WithPlaylistRetries(3),
-			WithLogger(&log.Logger),
 		)
 
 		// Act
@@ -400,7 +396,6 @@ func (suite *DownloaderTestSuite) TestDownload() {
 			),
 			suite.server.URL,
 			WithFragmentRetries(2),
-			WithLogger(&log.Logger),
 		)
 
 		// Act
@@ -439,7 +434,6 @@ func (suite *DownloaderTestSuite) TestDownload() {
 			),
 			suite.server.URL,
 			WithFragmentRetries(3),
-			WithLogger(&log.Logger),
 		)
 
 		// Act
@@ -514,7 +508,6 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 		),
 		suite.server.URL,
 		WithPacketLossMax(10),
-		WithLogger(&log.Logger),
 	)
 }
 

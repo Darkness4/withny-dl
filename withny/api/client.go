@@ -346,16 +346,23 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 }
 
 // GetStreams will fetch the streams for the given channelID.
-func (c *Client) GetStreams(ctx context.Context, channelID string) (GetStreamsResponse, error) {
+func (c *Client) GetStreams(
+	ctx context.Context,
+	channelID string,
+	passCode string,
+) (GetStreamsResponse, error) {
 	u, err := url.Parse(streamsWithRoomsURL)
 	if err != nil {
 		panic(err)
 	}
+	q := u.Query()
 	if channelID != "" {
-		q := u.Query()
 		q.Set("username", channelID)
-		u.RawQuery = q.Encode()
 	}
+	if passCode != "" {
+		q.Set("passCode", passCode)
+	}
+	u.RawQuery = q.Encode()
 
 	req, err := c.NewAuthRequestWithContext(
 		ctx,
@@ -743,13 +750,8 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			if err := c.Login(ctx); err != nil {
-				if err := notifier.NotifyLoginFailed(ctx, err); err != nil {
-					log.Err(err).Msg("notify failed")
-				}
-				log.Err(err).
-					Msg("failed to login to withny, we will try again in 5 minutes")
-				ticker.Reset(5 * time.Minute)
-				continue
+				log.Err(err).Msg("failed to login to withny, stopping login loop")
+				return err
 			}
 			creds, err := c.credentialsCache.Get()
 			if err != nil {
