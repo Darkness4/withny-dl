@@ -247,6 +247,7 @@ func (hls *Downloader) fillQueue(
 	ctx context.Context,
 	fragChan chan<- Fragment,
 ) (err error) {
+	log := log.Ctx(ctx)
 	log.Debug().Msg("started to fill queue")
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "hls.fillQueue")
 	defer span.End()
@@ -361,6 +362,7 @@ func (hls *Downloader) download(
 	url string,
 ) error {
 	log := log.Ctx(ctx).With().Str("url", url).Logger()
+	ctx = log.WithContext(ctx)
 
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
