@@ -88,7 +88,7 @@ func (w *SessionWebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 func (w *SessionWebSocket) Watch(
 	ctx context.Context,
 	conn *websocket.Conn,
-	streams chan<- *GetStreamsResponseElement,
+	streams chan<- GetStreamsResponseElement,
 ) error {
 	log := log.Ctx(ctx).
 		With().
@@ -156,7 +156,7 @@ func (w *SessionWebSocket) Watch(
 				log.Err(err).Any("msg", decoded).Msg("failed to unmarshal payload")
 				continue
 			}
-			streams <- &stream
+			streams <- stream
 		}
 	}
 }
@@ -174,27 +174,27 @@ func FetchStreamMetadataSync(
 	client *Client,
 	streamUUID string,
 	passCode string,
-) (*GetStreamsResponseElement, error) {
+) (el GetStreamsResponseElement, err error) {
 	ws := NewSessionWebSocket(client, streamUUID, passCode)
 	conn, err := ws.Dial(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial websocket: %w", err)
+		return el, fmt.Errorf("failed to dial websocket: %w", err)
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
-	streamsCh := make(chan *GetStreamsResponseElement, 1)
+	streamsCh := make(chan GetStreamsResponseElement, 1)
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- ws.Watch(ctx, conn, streamsCh)
 	}()
 	select {
 	case err := <-errCh:
-		return nil, err
-	case stream := <-streamsCh:
-		return stream, nil
+		return el, err
+	case el := <-streamsCh:
+		return el, nil
 	case <-time.After(5 * time.Second):
-		return nil, ErrStreamNotFound
+		return el, ErrStreamNotFound
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return el, ctx.Err()
 	}
 }

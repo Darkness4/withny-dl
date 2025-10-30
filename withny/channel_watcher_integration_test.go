@@ -72,7 +72,7 @@ func (suite *ChannelWatcherIntegrationTestSuite) TestHasNewStream() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(true, res.HasNewStream)
 	suite.Require().NotEmpty(res.Stream)
-	suite.Require().NotEmpty(res.PlaybackURL)
+	suite.Require().NotEmpty(res.Playlists)
 
 	b, _ := json.MarshalIndent(res.Stream, "", "  ")
 	fmt.Println(string(b))

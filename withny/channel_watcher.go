@@ -10,12 +10,12 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Darkness4/withny-dl/notify/notifier"
 	"github.com/Darkness4/withny-dl/state"
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
+	"github.com/Darkness4/withny-dl/utils/sync"
 	"github.com/Darkness4/withny-dl/utils/try"
 	"github.com/Darkness4/withny-dl/video/concat"
 	"github.com/Darkness4/withny-dl/video/probe"
@@ -46,8 +46,7 @@ type ChannelWatcher struct {
 	// filterChannelID is like a channelID, but an empty one will select all channels.
 	filterChannelID string
 	// processingStreams is a set of streamsIDs that are currently being processed.
-	processingStreams     map[string]struct{}
-	processingStreamsLock sync.Mutex
+	processingStreams *sync.Set[string]
 }
 
 // NewChannelWatcher creates a new withny channel watcher.
@@ -59,7 +58,7 @@ func NewChannelWatcher(scraper *api.Scraper, params *Params, channelID string) *
 		Scraper:           scraper,
 		params:            params,
 		filterChannelID:   channelID,
-		processingStreams: make(map[string]struct{}),
+		processingStreams: sync.NewSet[string](),
 	}
 }
 
@@ -121,16 +120,10 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 			}
 		}
 
-		w.processingStreamsLock.Lock()
-		w.processingStreams[res.Stream.UUID] = struct{}{}
-		w.processingStreamsLock.Unlock()
+		w.processingStreams.Set(res.Stream.UUID)
 
 		go func() {
-			defer func() {
-				w.processingStreamsLock.Lock()
-				delete(w.processingStreams, res.Stream.UUID)
-				w.processingStreamsLock.Unlock()
-			}()
+			defer w.processingStreams.Release(res.Stream.UUID)
 			log := log.With().
 				Str("channelID", res.User.Username).
 				Str("streamID", res.Stream.UUID).
@@ -140,7 +133,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 			err := w.Process(ctx, api.MetaData{
 				User:   res.User,
 				Stream: res.Stream,
-			}, res.PlaybackURL)
+			}, res.Playlists)
 
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
@@ -196,12 +189,9 @@ func (w *ChannelWatcher) waitProcessingOrFatal(timeout time.Duration) {
 	for {
 		select {
 		case <-ticker.C:
-			w.processingStreamsLock.Lock()
-			if len(w.processingStreams) == 0 {
-				w.processingStreamsLock.Unlock()
+			if w.processingStreams.Len() == 0 {
 				return
 			}
-			w.processingStreamsLock.Unlock()
 		case <-ctx.Done():
 			log.Fatal().Msg("timeout waiting for processing to finish")
 		}
@@ -213,14 +203,13 @@ type HasNewStreamResponse struct {
 	HasNewStream bool
 	Stream       api.GetStreamsResponseElement
 	User         api.GetUserResponse
-	PlaybackURL  string
+	Playlists    []api.Playlist
 }
 
 // HasNewStream checks if the live stream is online.
 func (w *ChannelWatcher) HasNewStream(
 	ctx context.Context,
 ) (res HasNewStreamResponse, err error) {
-	log := log.Ctx(ctx)
 	res, err = try.DoExponentialBackoffWithResult(
 		60,
 		30*time.Second,
@@ -235,11 +224,6 @@ func (w *ChannelWatcher) HasNewStream(
 			return w.hasNewStreamSpecific(ctx, w.filterChannelID)
 		},
 	)
-	if err != nil {
-		if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
-			log.Err(err).Msg("notify failed")
-		}
-	}
 	return res, err
 }
 
@@ -260,9 +244,6 @@ func (w *ChannelWatcher) hasNewStreamAll(ctx context.Context) (HasNewStreamRespo
 	}
 
 	// Find a stream that is online and not being processed.
-	var getUserResp api.GetUserResponse
-	var playbackURL string
-	var stream api.GetStreamsResponseElement
 	var lastErr error
 	for _, s := range streams {
 		if s.Cast.AgencySecret.ChannelName == "" {
@@ -276,53 +257,26 @@ func (w *ChannelWatcher) hasNewStreamAll(ctx context.Context) (HasNewStreamRespo
 			continue
 		}
 
-		w.processingStreamsLock.Lock()
-		_, ok := w.processingStreams[s.UUID]
-		w.processingStreamsLock.Unlock()
-		if ok {
-			// Stream is being processed.
+		if w.processingStreams.Contains(s.UUID) {
 			continue
 		}
-
-		// Stream is not being processed, check if it is online.
 
 		channelID := s.Cast.AgencySecret.ChannelName
 		log.Info().Str("channelID", channelID).Str("stream", s.Title).Msg("streams found")
-		getUserResp, lastErr = w.GetUser(ctx, channelID)
-		if lastErr != nil {
-			var apiError api.HTTPError
-			var isAPIError = errors.As(lastErr, &apiError)
-			if !isAPIError || (isAPIError && apiError.Status < 500) {
-				if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, lastErr); err != nil {
-					log.Err(err).Msg("notify failed")
-				}
-			}
+
+		res, err := w.validateAndFetchStreamData(ctx, channelID, s.UUID)
+		if err != nil {
+			lastErr = err
 			continue
 		}
 
-		playbackURL, lastErr = w.GetStreamPlaybackURL(ctx, s.UUID)
-		if lastErr != nil {
-			if err := notifier.NotifyError(ctx, channelID, w.params.Labels, lastErr); err != nil {
-				log.Err(err).Msg("notify failed")
-			}
-			continue
+		if res.HasNewStream {
+			res.Stream = s
+			return res, nil
 		}
-
-		stream = s
 	}
 
-	if playbackURL == "" {
-		return HasNewStreamResponse{
-			HasNewStream: false,
-		}, lastErr
-	}
-
-	return HasNewStreamResponse{
-		HasNewStream: true,
-		PlaybackURL:  playbackURL,
-		User:         getUserResp,
-		Stream:       stream,
-	}, nil
+	return HasNewStreamResponse{}, lastErr
 }
 
 func (w *ChannelWatcher) hasNewStreamSpecific(
@@ -344,55 +298,111 @@ func (w *ChannelWatcher) hasNewStreamSpecific(
 
 	stream, err := api.FetchStreamMetadataSync(ctx, w.Client, suuid, w.params.PassCode)
 	if errors.Is(err, api.ErrStreamNotFound) {
-		return HasNewStreamResponse{
-			HasNewStream: false,
-		}, nil
+		return HasNewStreamResponse{}, nil
 	} else if err != nil {
 		return HasNewStreamResponse{}, fmt.Errorf("failed to fetch stream metadata: %w", err)
 	}
 
-	w.processingStreamsLock.Lock()
-	_, ok := w.processingStreams[stream.UUID]
-	w.processingStreamsLock.Unlock()
-	if ok {
-		// Stream is being processed.
-		return HasNewStreamResponse{
-			HasNewStream: false,
-		}, nil
+	if w.processingStreams.Contains(stream.UUID) {
+		return HasNewStreamResponse{}, nil
 	}
 
-	// Stream is not being processed, check if it is online.
+	res, err := w.validateAndFetchStreamData(ctx, channelID, stream.UUID)
+	if err != nil {
+		return HasNewStreamResponse{}, err
+	}
+	if res.HasNewStream {
+		res.Stream = stream
+	}
 
+	return res, nil
+}
+
+// validateAndFetchStreamData fetches and validates user, playback URL, and playlists for a stream.
+func (w *ChannelWatcher) validateAndFetchStreamData(
+	ctx context.Context,
+	channelID string,
+	streamUUID string,
+) (HasNewStreamResponse, error) {
 	getUserResp, err := w.GetUser(ctx, channelID)
 	if err != nil {
-		var apiError api.HTTPError
-		var isAPIError = errors.As(err, &apiError)
-		if !isAPIError || (isAPIError && apiError.Status < 500) {
-			if err := notifier.NotifyError(ctx, w.filterChannelID, w.params.Labels, err); err != nil {
-				log.Err(err).Msg("notify failed")
-			}
-		}
-		return HasNewStreamResponse{}, fmt.Errorf("failed to fetch user metadata: %w", err)
+		err = fmt.Errorf("failed to fetch user metadata: %w", err)
+		w.notifyOnClientOrUnknownError(ctx, channelID, err)
+		return HasNewStreamResponse{}, err
 	}
 
-	playbackURL, err := w.GetStreamPlaybackURL(ctx, stream.UUID)
+	playbackURL, err := w.GetStreamPlaybackURL(ctx, streamUUID)
 	if err != nil {
-		if err := notifier.NotifyError(ctx, channelID, w.params.Labels, err); err != nil {
-			log.Err(err).Msg("notify failed")
-		}
+		err = fmt.Errorf("failed to fetch stream playback url: %w", err)
+		w.notifyOn403OrUnknownError(ctx, channelID, err)
 		return HasNewStreamResponse{}, err
+	}
+
+	playlists, err := w.GetPlaylists(ctx, playbackURL, w.params.PlaylistRetries)
+	if err != nil {
+		err = fmt.Errorf("failed to fetch playlists: %w", err)
+
+		var apiError api.HTTPError
+		if errors.As(err, &apiError) && apiError.Status == 404 {
+			// The stream is not online yet.
+			return HasNewStreamResponse{}, nil
+		}
+
+		w.notifyOn403OrUnknownError(ctx, channelID, err)
+		return HasNewStreamResponse{}, err
+	}
+	if len(playlists) == 0 {
+		return HasNewStreamResponse{}, nil
 	}
 
 	return HasNewStreamResponse{
 		HasNewStream: true,
-		PlaybackURL:  playbackURL,
-		Stream:       *stream,
+		Playlists:    playlists,
 		User:         getUserResp,
 	}, nil
 }
 
+// notifyOnClientOrUnknownError sends notifications for client errors (< 500) or non-API errors.
+func (w *ChannelWatcher) notifyOnClientOrUnknownError(
+	ctx context.Context,
+	channelID string,
+	err error,
+) {
+	var apiError api.HTTPError
+	isAPIError := errors.As(err, &apiError)
+
+	// Only notify on client error or unknown error
+	if !isAPIError || (isAPIError && apiError.Status < 500) {
+		if notifyErr := notifier.NotifyError(ctx, channelID, w.params.Labels, err); notifyErr != nil {
+			log.Err(notifyErr).Msg("notify failed")
+		}
+	}
+}
+
+// notifyOn403OrUnknownError sends notifications for 403 errors or non-API errors.
+func (w *ChannelWatcher) notifyOn403OrUnknownError(
+	ctx context.Context,
+	channelID string,
+	err error,
+) {
+	log := log.Ctx(ctx)
+	var apiError api.HTTPError
+	isAPIError := errors.As(err, &apiError)
+
+	// Only notify on 403 or unknown error
+	if !isAPIError || (isAPIError && apiError.Status == 403) {
+		if notifyErr := notifier.NotifyError(ctx, channelID, w.params.Labels, err); notifyErr != nil {
+			log.Err(notifyErr).Msg("notify failed")
+		}
+	}
+}
+
 // Process runs the whole preparation, download and post-processing pipeline.
-func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbackURL string) error {
+func (w *ChannelWatcher) Process(
+	ctx context.Context,
+	meta api.MetaData,
+	playlists []api.Playlist,
+) error {
 	log := log.Ctx(ctx)
 	channelID := meta.User.Username
 	ctx, span := otel.Tracer(tracerName).
@@ -574,7 +584,7 @@ func (w *ChannelWatcher) Process(ctx context.Context, meta api.MetaData, playbac
 		MetaData:       meta,
 		Params:         w.params,
 		OutputFileName: fnameStream,
-		PlaybackURL:    playbackURL,
+		Playlists:      playlists,
 	})
 	chatDownloadCancel()
 

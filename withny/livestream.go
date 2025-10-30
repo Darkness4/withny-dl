@@ -24,7 +24,7 @@ type LiveStream struct {
 	MetaData       api.MetaData
 	Params         *Params
 	OutputFileName string
-	PlaybackURL    string
+	Playlists      []api.Playlist
 }
 
 // DownloadLiveStream downloads a withny live stream.
@@ -36,33 +36,17 @@ func DownloadLiveStream(ctx context.Context, client *api.Client, ls LiveStream) 
 	))
 	defer span.End()
 
-	// Fetch playlist
-	playlists, err := client.GetPlaylists(ctx, ls.PlaybackURL, 0)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		log.Err(err).Msg("failed to fetch playlists")
-		return err
-	}
-	if len(playlists) == 0 {
-		err := errors.New("no playlists found")
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		log.Err(err).Msg("no playlists found")
-		return err
-	}
-
 	var downloader *hls.Downloader
 	constraint := ls.Params.QualityConstraint
 	for {
-		playlist, ok := api.GetBestPlaylist(playlists, constraint)
+		playlist, ok := api.GetBestPlaylist(ls.Playlists, constraint)
 		if !ok {
 			log.Warn().
-				Any("playlists", playlists).
-				Any("fallback", playlists[0]).
+				Any("playlists", ls.Playlists).
+				Any("fallback", ls.Playlists[0]).
 				Any("constraint", constraint).
 				Msg("no playlist found with current constraint")
-			playlist = playlists[0]
+			playlist = ls.Playlists[0]
 		}
 
 		downloader = hls.NewDownloader(

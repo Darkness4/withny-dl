@@ -42,7 +42,7 @@ func TestSessionWebSocket(t *testing.T) {
 		conn, err := ws.Dial(ctx)
 		require.NoError(t, err)
 
-		streamsCh := make(chan *api.GetStreamsResponseElement, 10)
+		streamsCh := make(chan api.GetStreamsResponseElement, 10)
 		go ws.Watch(ctx, conn, streamsCh)
 
 		for {
