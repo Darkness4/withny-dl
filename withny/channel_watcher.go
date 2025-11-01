@@ -216,22 +216,25 @@ func (w *ChannelWatcher) HasNewStream(
 		2,
 		60*time.Minute,
 		func() (HasNewStreamResponse, error) {
-			if w.filterChannelID == "" {
+			if w.filterChannelID == "" || w.params.PassCode == "" {
 				// use this logic when we want to download any channel
-				return w.hasNewStreamAll(ctx)
+				return w.hasNewStreamMethodAPI(ctx, w.filterChannelID)
 			}
 			// use this logic when we want to download a specific channel
-			return w.hasNewStreamSpecific(ctx, w.filterChannelID)
+			return w.hasNewStreamMethodScrape(ctx, w.filterChannelID)
 		},
 	)
 	return res, err
 }
 
-func (w *ChannelWatcher) hasNewStreamAll(ctx context.Context) (HasNewStreamResponse, error) {
-	streams, err := w.GetStreams(ctx, "", w.params.PassCode)
+func (w *ChannelWatcher) hasNewStreamMethodAPI(
+	ctx context.Context,
+	filterChannelID string,
+) (HasNewStreamResponse, error) {
+	streams, err := w.GetStreams(ctx, filterChannelID, w.params.PassCode)
 	if err != nil {
 		if !errors.Is(err, api.HTTPError{}) {
-			if err := notifier.NotifyError(ctx, "", w.params.Labels, err); err != nil {
+			if err := notifier.NotifyError(ctx, filterChannelID, w.params.Labels, err); err != nil {
 				log.Err(err).Msg("notify failed")
 			}
 		}
@@ -279,7 +282,7 @@ func (w *ChannelWatcher) hasNewStreamAll(ctx context.Context) (HasNewStreamRespo
 	return HasNewStreamResponse{}, lastErr
 }
 
-func (w *ChannelWatcher) hasNewStreamSpecific(
+func (w *ChannelWatcher) hasNewStreamMethodScrape(
 	ctx context.Context,
 	channelID string,
 ) (HasNewStreamResponse, error) {
