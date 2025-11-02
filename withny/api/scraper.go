@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"regexp"
 	"strconv"
 
@@ -49,6 +50,14 @@ func (s *Scraper) FetchCommentsGraphQLAndStreamUUID(
 		return "", "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", HTTPError{
+			Status: resp.StatusCode,
+			Method: "GET",
+			URL:    channelURL,
+		}
+	}
 
 	endpoint, suuid, err = findGraphQLEndpointAndStreamUUID(resp.Body)
 	if err != nil {
@@ -114,6 +123,14 @@ func (s *Scraper) FetchStreamUUID(
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", HTTPError{
+			Status: resp.StatusCode,
+			Method: "GET",
+			URL:    channelURL,
+		}
+	}
 
 	suuid, err = fetchStreamUUID(resp.Body)
 	if err != nil {
