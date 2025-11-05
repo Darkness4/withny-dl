@@ -87,19 +87,19 @@ target/checksums.txt: target
 target/release.md: target/checksums.txt
 	sed -e '/@@@CHECKSUMS@@@/{r target/checksums.txt' -e 'd}' .github/RELEASE_TEMPLATE.md > $@
 
-target/withny-dl-linux-amd64 target/withny-dl-linux-arm64 target/withny-dl-linux-riscv64:
+target/withny-dl-linux-amd64 target/withny-dl-linux-arm64:
 	podman manifest rm localhost/builder:static || true
 	mkdir -p ./target
 	podman build \
 		--manifest localhost/builder:static \
-		--jobs=2 --platform=linux/amd64,linux/arm64/v8,linux/riscv64 \
+		--jobs=2 --platform=linux/amd64,linux/arm64/v8 \
 		--target export \
 		--output=type=local,dest=./target \
 		-f Dockerfile.static .
 	./assert-arch.sh
 
 .PHONY: target-static
-target-static: target/withny-dl-linux-amd64 target/withny-dl-linux-arm64 target/withny-dl-linux-riscv64
+target-static: target/withny-dl-linux-amd64 target/withny-dl-linux-arm64
 
 target/withny-dl-windows-amd64.exe:
 	mkdir -p ./target
@@ -132,7 +132,7 @@ docker-static:
 	podman manifest rm ghcr.io/darkness4/withny-dl:latest || true
 	podman build \
 		--manifest ghcr.io/darkness4/withny-dl:latest \
-		--jobs=2 --platform=linux/amd64,linux/arm64/v8,linux/riscv64 \
+		--jobs=2 --platform=linux/amd64,linux/arm64/v8 \
 		-f Dockerfile.static .
 	podman manifest push --all ghcr.io/darkness4/withny-dl:latest "docker://ghcr.io/darkness4/withny-dl:latest"
 	podman manifest push --all ghcr.io/darkness4/withny-dl:latest "docker://ghcr.io/darkness4/withny-dl:${VERSION_NO_V}"

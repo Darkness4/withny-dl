@@ -76,7 +76,7 @@ func TestParseM3U8(t *testing.T) {
 }
 
 func BenchmarkParseM3U8(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		api.ParseM3U8(strings.NewReader(fixture))
 	}
 }

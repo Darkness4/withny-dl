@@ -60,12 +60,12 @@ func TestSyncSet_Len(t *testing.T) {
 
 	assert.Equal(t, 0, s.Len())
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.Set(i)
 	}
 	assert.Equal(t, 10, s.Len())
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		s.Release(i)
 	}
 	assert.Equal(t, 5, s.Len())
@@ -97,11 +97,11 @@ func TestSyncSet_ConcurrentAdd(t *testing.T) {
 	numGoroutines := 100
 	itemsPerGoroutine := 100
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(offset int) {
 			defer wg.Done()
-			for j := 0; j < itemsPerGoroutine; j++ {
+			for j := range itemsPerGoroutine {
 				s.Set(offset*itemsPerGoroutine + j)
 			}
 		}(i)
@@ -161,17 +161,17 @@ func TestSyncSet_ConcurrentContains(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Pre-populate
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		s.Set("key" + string(rune(i)))
 	}
 
 	// Concurrent reads
 	numReaders := 100
-	for i := 0; i < numReaders; i++ {
+	for i := range numReaders {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < 1000; j++ {
+			for j := range 1000 {
 				s.Contains("key" + string(rune(j%100)))
 			}
 		}(i)
@@ -188,34 +188,32 @@ func TestSyncSet_ConcurrentMixed(t *testing.T) {
 	operations := 1000
 
 	// Writers
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < operations; j++ {
+			for j := range operations {
 				s.Set(id*operations + j)
 			}
 		}(i)
 	}
 
 	// Readers
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < operations; j++ {
+	for range 10 {
+		wg.Go(func() {
+			for j := range operations {
 				s.Contains(j)
 				s.Len()
 			}
-		}()
+		})
 	}
 
 	// Removers
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < operations; j++ {
+			for j := range operations {
 				s.Release(id*operations + j)
 			}
 		}(i)
