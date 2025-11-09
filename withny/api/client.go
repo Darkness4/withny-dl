@@ -224,17 +224,16 @@ func (c *Client) Login(ctx context.Context) (err error) {
 					log.Err(err).
 						Int("tries", tries).
 						Msg("failed to refresh token from cache, retrying")
-					if err := notifier.NotifyLoginFailed(ctx, err); err != nil {
-						log.Err(err).Msg("notify failed")
-					}
 					tries++
 					time.Sleep(time.Second)
 					continue
 				}
 				log.Err(err).
 					Msg("failed to refresh token from cache, will use provided credentials")
-				err = c.credentialsCache.Invalidate()
-				if err != nil {
+				if err := notifier.NotifyLoginFailed(ctx, err); err != nil {
+					log.Err(err).Msg("notify failed")
+				}
+				if err := c.credentialsCache.Invalidate(); err != nil {
 					log.Err(err).Msg("failed to invalidate cache")
 				}
 				creds, err = c.loginWithReader(ctx)
