@@ -717,11 +717,6 @@ func (c *Client) GetPlaylists(
 
 // LoginLoop will login to withny and refresh the token when needed.
 func (c *Client) LoginLoop(ctx context.Context) error {
-	if err := c.Login(ctx); err != nil {
-		log.Err(err).Msg("failed to login to withny")
-		return err
-	}
-
 	creds, err := c.credentialsCache.Get()
 	if err != nil {
 		log.Err(err).Msg("failed to get cached credentials")
