@@ -14,6 +14,7 @@ import (
 
 	"github.com/Darkness4/withny-dl/notify/notifier"
 	"github.com/Darkness4/withny-dl/utils"
+	"github.com/Darkness4/withny-dl/utils/useragent"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -120,6 +121,8 @@ type CredentialsCache interface {
 // ClientOptions is the options for the withny API client.
 type ClientOptions struct {
 	clearCredentialCacheOnFailureAfter int
+	userAgent                          string
+	loginRetryDelay                    time.Duration
 }
 
 // ClientOption is a function that configures the withny API client.
@@ -131,6 +134,8 @@ type Client struct {
 	credentialsReader                  CredentialsReader
 	credentialsCache                   CredentialsCache
 	clearCredentialCacheOnFailureAfter int
+	userAgent                          string
+	loginRetryDelay                    time.Duration
 }
 
 // WithClearCredentialCacheOnFailureAfter sets the number of times to retry
@@ -138,6 +143,20 @@ type Client struct {
 func WithClearCredentialCacheOnFailureAfter(i int) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.clearCredentialCacheOnFailureAfter = i
+	}
+}
+
+// WithUserAgent sets the user agent for the client.
+func WithUserAgent(ua string) ClientOption {
+	return func(opts *ClientOptions) {
+		opts.userAgent = ua
+	}
+}
+
+// WithLoginRetryDelay sets the delay between login retries.
+func WithLoginRetryDelay(d time.Duration) ClientOption {
+	return func(opts *ClientOptions) {
+		opts.loginRetryDelay = d
 	}
 }
 
@@ -164,11 +183,21 @@ func NewClient(
 	if opts.clearCredentialCacheOnFailureAfter == 0 {
 		opts.clearCredentialCacheOnFailureAfter = 10
 	}
+	if opts.userAgent == "" {
+		opts.userAgent = useragent.Get()
+		log.Info().
+			Str("User-Agent", opts.userAgent).
+			Msg("no user agent provided, using predefined user agent")
+	}
+	if opts.loginRetryDelay == 0 {
+		opts.loginRetryDelay = 60 * time.Second
+	}
 	return &Client{
 		Client:                             client,
 		credentialsReader:                  reader,
 		credentialsCache:                   cache,
 		clearCredentialCacheOnFailureAfter: opts.clearCredentialCacheOnFailureAfter,
+		userAgent:                          opts.userAgent,
 	}
 }
 
@@ -188,10 +217,7 @@ func (c *Client) NewAuthRequestWithContext(
 		log.Err(err).Msg("failed to get cached credentials")
 	}
 	req.Header.Set("Authorization", "Bearer "+creds.Token)
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
-	)
+	req.Header.Set("User-Agent", c.userAgent)
 	return req, nil
 }
 
@@ -229,7 +255,7 @@ func (c *Client) Login(ctx context.Context) (err error) {
 						Int("tries", tries).
 						Msg("failed to refresh token from cache, retrying in 60 seconds")
 					tries++
-					time.Sleep(60 * time.Second)
+					time.Sleep(c.loginRetryDelay)
 					continue
 				}
 				log.Err(err).
@@ -511,10 +537,7 @@ func (c *Client) LoginWithUserPassword(
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
-	)
+	req.Header.Set("User-Agent", c.userAgent)
 
 	log := log.With().
 		Str("method", "POST").
@@ -653,10 +676,7 @@ func (c *Client) GetPlaylists(
 	)
 	req.Header.Set("Referer", "https://www.withny.fun/")
 	req.Header.Set("Origin", "https://www.withny.fun")
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
-	)
+	req.Header.Set("User-Agent", c.userAgent)
 
 	log := log.With().
 		Str("method", "GET").

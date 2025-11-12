@@ -18,8 +18,13 @@ credentialsFile: 'credentials.yaml'
 ## The file is encrypted.
 cachedCredentialsFile: 'withny-dl.json'
 ## The cache will be cleared after X failures to login.
-## There is a try 60 seconds.
+## An alert will be sent.
 clearCredentialCacheOnFailureAfter: 10
+## Retry delay on login failure.
+loginRetryDelay: 60s
+## Impersonate a browser user agent. (default: '', means will use a random browser user agent)
+## Example: Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0
+userAgent: ''
 
 defaultParams:
   ## Quality constraint to select the stream to download.

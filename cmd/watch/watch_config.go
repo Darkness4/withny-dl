@@ -20,6 +20,8 @@ type Config struct {
 	CredentialsFile                    string                           `yaml:"credentialsFile,omitempty"`
 	CachedCredentialsFile              string                           `yaml:"cachedCredentialsFile,omitempty"`
 	ClearCredentialCacheOnFailureAfter int                              `yaml:"clearCredentialCacheOnFailureAfter,omitempty"`
+	LoginRetryDelay                    time.Duration                    `yaml:"loginRetryDelay,omitempty"`
+	UserAgent                          string                           `yaml:"userAgent,omitempty"`
 	DefaultParams                      withny.OptionalParams            `yaml:"defaultParams,omitempty"`
 	Channels                           map[string]withny.OptionalParams `yaml:"channels,omitempty"`
 }

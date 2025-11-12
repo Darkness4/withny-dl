@@ -196,6 +196,8 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 		secret.NewReader(config.CredentialsFile),
 		secret.NewFileCache(config.CachedCredentialsFile, encryptionKey),
 		api.WithClearCredentialCacheOnFailureAfter(config.ClearCredentialCacheOnFailureAfter),
+		api.WithUserAgent(config.UserAgent),
+		api.WithLoginRetryDelay(config.LoginRetryDelay),
 	)
 
 	go func() {
