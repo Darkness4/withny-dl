@@ -223,9 +223,9 @@ func (c *Client) Login(ctx context.Context) (err error) {
 				if tries < c.clearCredentialCacheOnFailureAfter {
 					log.Err(err).
 						Int("tries", tries).
-						Msg("failed to refresh token from cache, retrying")
+						Msg("failed to refresh token from cache, retrying in 60 seconds")
 					tries++
-					time.Sleep(time.Second)
+					time.Sleep(60 * time.Second)
 					continue
 				}
 				log.Err(err).

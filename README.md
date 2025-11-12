@@ -266,7 +266,7 @@ defaultParams:
   ## Download thumbnail into a file. (default: false)
   writeThumbnail: false
   ## How many seconds between checks to see if broadcast is live. (default: 10s)
-  waitPollInterval: '10s'
+  waitPollInterval: '60s'
   ## Remux recordings into mp4/m4a after it is finished. (default: true)
   remux: true
   ## Remux format (default: mp4)

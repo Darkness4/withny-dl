@@ -18,7 +18,7 @@ credentialsFile: 'credentials.yaml'
 ## The file is encrypted.
 cachedCredentialsFile: 'withny-dl.json'
 ## The cache will be cleared after X failures to login.
-## There is a try every second.
+## There is a try 60 second.
 clearCredentialCacheOnFailureAfter: 300
 
 defaultParams:
@@ -69,8 +69,8 @@ defaultParams:
   writeMetaDataJson: false
   ## Download thumbnail into a file. (default: false)
   writeThumbnail: false
-  ## How many seconds between checks to see if broadcast is live. (default: 10s)
-  waitPollInterval: '10s'
+  ## How many seconds between checks to see if broadcast is live. (default: 60s)
+  waitPollInterval: '60s'
   ## Remux recordings into mp4/m4a after it is finished. (default: true)
   remux: true
   ## Remux format (default: mp4)
@@ -122,7 +122,7 @@ defaultParams:
   extractAudio: true
   ## Set the passcode to access the channels (optional, default: "").
   ## We recommend to set it per-channel though. See channels.<id>.passCode.
-  passCode: ""
+  passCode: ''
   ## Map of key/value strings.
   ##
   ## The value of the label can be invoked in the go template by using {{ .Labels.Key }}.
@@ -143,7 +143,7 @@ channels:
   ## Track the "admin" channel.
   'admin':
     ## Set the passcode to access channel (optional, default: "").
-    passCode: ""
+    passCode: ''
     ## Override some default parameters. See defaultParams for available options.
     labels:
       EnglishName: Admin
