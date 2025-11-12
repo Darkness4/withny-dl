@@ -50,7 +50,7 @@ func TestClient(t *testing.T) {
 		hclient,
 		credReader,
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
-		api.WithClearCredentialCacheOnFailureAfter(300),
+		api.WithClearCredentialCacheOnFailureAfter(5),
 	)
 	passCode := ""
 

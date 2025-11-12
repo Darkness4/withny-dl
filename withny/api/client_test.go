@@ -25,7 +25,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 			server.Client(),
 			secret.CredentialsFromEnv{},
 			secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
-			api.WithClearCredentialCacheOnFailureAfter(300),
+			api.WithClearCredentialCacheOnFailureAfter(5),
 		)
 
 		// Act
@@ -58,7 +58,7 @@ func TestGetPlaylistsRetry(t *testing.T) {
 			server.Client(),
 			secret.CredentialsFromEnv{},
 			secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
-			api.WithClearCredentialCacheOnFailureAfter(300),
+			api.WithClearCredentialCacheOnFailureAfter(5),
 		)
 
 		// Act

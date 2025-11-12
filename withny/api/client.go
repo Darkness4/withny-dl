@@ -162,7 +162,7 @@ func NewClient(
 		o(opts)
 	}
 	if opts.clearCredentialCacheOnFailureAfter == 0 {
-		opts.clearCredentialCacheOnFailureAfter = 300
+		opts.clearCredentialCacheOnFailureAfter = 10
 	}
 	return &Client{
 		Client:                             client,

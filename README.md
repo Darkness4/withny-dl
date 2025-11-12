@@ -166,8 +166,8 @@ credentialsFile: 'credentials.yaml'
 ## The file is encrypted.
 cachedCredentialsFile: 'withny-dl.json'
 ## The cache will be cleared after X failures to login.
-## There is a try every second.
-clearCredentialCacheOnFailureAfter: 300
+## There is a try 60 second.
+clearCredentialCacheOnFailureAfter: 10
 
 defaultParams:
   outFormat: output/{{ .ChannelID }}/{{ .Date }} {{ .Title }}.{{ .Ext }}
@@ -214,8 +214,8 @@ credentialsFile: 'credentials.yaml'
 ## The file is encrypted.
 cachedCredentialsFile: 'withny-dl.json'
 ## The cache will be cleared after X failures to login.
-## There is a try every second.
-clearCredentialCacheOnFailureAfter: 300
+## There is a try 60 second.
+clearCredentialCacheOnFailureAfter: 10
 
 defaultParams:
   ## Quality constraint to select the stream to download.
