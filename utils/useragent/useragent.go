@@ -29,6 +29,6 @@ var ua = []string{
 }
 
 func Get() string {
-	chosen := int(hostnameToNumber()) % len(ua)
+	chosen := hostnameToNumber() % uint64(len(ua))
 	return ua[chosen]
 }
