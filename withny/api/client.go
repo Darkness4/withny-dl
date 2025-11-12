@@ -188,6 +188,10 @@ func (c *Client) NewAuthRequestWithContext(
 		log.Err(err).Msg("failed to get cached credentials")
 	}
 	req.Header.Set("Authorization", "Bearer "+creds.Token)
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
+	)
 	return req, nil
 }
 
@@ -507,6 +511,10 @@ func (c *Client) LoginWithUserPassword(
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
+	)
 
 	log := log.With().
 		Str("method", "POST").
@@ -645,6 +653,10 @@ func (c *Client) GetPlaylists(
 	)
 	req.Header.Set("Referer", "https://www.withny.fun/")
 	req.Header.Set("Origin", "https://www.withny.fun")
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
+	)
 
 	log := log.With().
 		Str("method", "GET").
