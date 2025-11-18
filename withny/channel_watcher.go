@@ -249,22 +249,30 @@ func (w *ChannelWatcher) hasNewStreamMethodAPI(
 	// Find a stream that is online and not being processed.
 	var lastErr error
 	for _, s := range streams {
-		if s.Cast.AgencySecret.ChannelName == "" {
-			// Stream is scheduled to be live, but not online yet.
-			log.Warn().Any("stream", s).Msg("stream is not ready")
-			continue
-		}
+		var channelID string
+		if filterChannelID == "" {
+			// Filter is empty means we want to download any channel.
+			// Fetch the channelID from the stream.
+			if s.Cast == nil || s.Cast.AgencySecret.ChannelName == "" {
+				// Stream is scheduled to be live, but not online yet.
+				log.Warn().Any("stream", s).Msg("stream is not ready")
+				continue
+			}
 
-		// Check if stream is an ignored channel.
-		if slices.Contains(w.params.Ignore, s.Cast.AgencySecret.ChannelName) {
-			continue
+			// Check if stream is an ignored channel.
+			if slices.Contains(w.params.Ignore, s.Cast.AgencySecret.ChannelName) {
+				continue
+			}
+			channelID = s.Cast.AgencySecret.ChannelName
+		} else {
+			// Filter is not empty means we want to download a specific channel.
+			channelID = filterChannelID
 		}
 
 		if w.processingStreams.Contains(s.UUID) {
 			continue
 		}
 
-		channelID := s.Cast.AgencySecret.ChannelName
 		log.Info().Str("channelID", channelID).Str("stream", s.Title).Msg("streams found")
 
 		res, err := w.validateAndFetchStreamData(ctx, channelID, s.UUID)
