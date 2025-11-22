@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Darkness4/withny-dl/notify/notifier"
@@ -28,6 +29,21 @@ const (
 	streamsWithRoomsURL = apiURL + "/streams/with-rooms"
 	streamPlaybackURL   = streamsURL + "/%s/playback-url"
 )
+
+// maintenanceKeyword is used to check if the API is actually in maintenance.
+// This is used because Withny returns an OK response even if the API is in maintenance.
+const maintenanceKeyword = "メンテナンス"
+
+// mapMaintenanceToHTTPError maps the maintenance keyword to the correct HTTP error.
+func mapMaintenanceToHTTPError(body string) error {
+	if strings.Contains(body, maintenanceKeyword) {
+		return HTTPError{
+			Status: http.StatusServiceUnavailable,
+			Body:   body,
+		}
+	}
+	return nil
+}
 
 // HTTPError represents an HTTP error.
 type HTTPError struct {
@@ -340,9 +356,14 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 	}
 	defer res.Body.Close()
 
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Err(err).Msg("failed to read body")
+		return GetUserResponse{}, err
+	}
+
 	if res.StatusCode != http.StatusOK {
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
-		body, _ := io.ReadAll(res.Body)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
@@ -358,8 +379,17 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 		return GetUserResponse{}, err
 	}
 
+	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+		return GetUserResponse{}, err
+	}
+
 	var parsed GetUserResponse
-	err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed)
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Err(err).
+			Str("raw_message", string(body)).
+			Msg("failed to decode JSON")
+		return GetUserResponse{}, fmt.Errorf("failed to decode GetUser JSON response: %w", err)
+	}
 	return parsed, err
 }
 
@@ -406,8 +436,13 @@ func (c *Client) GetStreams(
 	}
 	defer res.Body.Close()
 
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Err(err).Msg("failed to read body")
+		return GetStreamsResponse{}, err
+	}
+
 	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
@@ -424,8 +459,20 @@ func (c *Client) GetStreams(
 		return GetStreamsResponse{}, err
 	}
 
+	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+		return GetStreamsResponse{}, err
+	}
+
 	var parsed GetStreamsResponse
-	err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed)
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Err(err).
+			Str("raw_message", string(body)).
+			Msg("failed to decode JSON")
+		return GetStreamsResponse{}, fmt.Errorf(
+			"failed to decode GetStreams JSON response: %w",
+			err,
+		)
+	}
 	return parsed, err
 }
 
@@ -465,8 +512,13 @@ func (c *Client) LoginWithRefreshToken(
 	}
 	defer res.Body.Close()
 
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Err(err).Msg("failed to read body")
+		return Credentials{}, err
+	}
+
 	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
 		if res.StatusCode == http.StatusUnauthorized {
 			log.Err(err).
 				Str("response", string(body)).
@@ -491,9 +543,19 @@ func (c *Client) LoginWithRefreshToken(
 		return Credentials{}, err
 	}
 
+	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+		return Credentials{}, err
+	}
+
 	var lr Credentials
-	if err := utils.JSONDecodeAndPrintOnError(res.Body, &lr.LoginResponse); err != nil {
-		return lr, err
+	if err := json.Unmarshal(body, &lr); err != nil {
+		log.Err(err).
+			Str("raw_message", string(body)).
+			Msg("failed to decode JSON")
+		return Credentials{}, fmt.Errorf(
+			"failed to decode login (with refresh token) response: %w",
+			err,
+		)
 	}
 	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
 	return lr, err
@@ -540,8 +602,13 @@ func (c *Client) LoginWithUserPassword(
 	}
 	defer res.Body.Close()
 
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Err(err).Msg("failed to read body")
+		return Credentials{}, err
+	}
+
 	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
@@ -558,9 +625,19 @@ func (c *Client) LoginWithUserPassword(
 		return Credentials{}, err
 	}
 
+	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+		return Credentials{}, err
+	}
+
 	var lr Credentials
-	if err := utils.JSONDecodeAndPrintOnError(res.Body, &lr.LoginResponse); err != nil {
-		return lr, err
+	if err := json.Unmarshal(body, &lr); err != nil {
+		log.Err(err).
+			Str("raw_message", string(body)).
+			Msg("failed to decode JSON")
+		return Credentials{}, fmt.Errorf(
+			"failed to decode login (with user password) response: %w",
+			err,
+		)
 	}
 	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
 	return lr, err
@@ -597,8 +674,13 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	}
 	defer res.Body.Close()
 
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Err(err).Msg("failed to read body")
+		return "", err
+	}
+
 	if res.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(res.Body)
 		switch res.StatusCode {
 		case http.StatusInternalServerError:
 			var errMsg ErrorResponse
@@ -641,9 +723,19 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 		}
 	}
 
+	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+		return "", err
+	}
+
 	var parsed string
-	if err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed); err != nil {
-		return "", fmt.Errorf("failed to decode playback url JSON response: %w", err)
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Err(err).
+			Str("raw_message", string(body)).
+			Msg("failed to decode JSON")
+		return "", fmt.Errorf(
+			"failed to decode login (with user password) response: %w",
+			err,
+		)
 	}
 	return parsed, nil
 }
@@ -756,16 +848,16 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 	if err != nil {
 		panic(err)
 	}
-	var refreshTime time.Time
+	var refreshDuration time.Duration
 	if date == nil {
 		// Refresh in 5 minutes
-		refreshTime = time.Now().Add(5 * time.Minute)
+		refreshDuration = 5 * time.Minute
 	} else {
 		// Refresh token 5 minutes before it expires
-		refreshTime = date.Add(-5 * time.Minute)
+		refreshDuration = time.Until(date.Add(-5 * time.Minute))
 	}
 
-	ticker := time.NewTicker(time.Until(refreshTime))
+	ticker := time.NewTicker(refreshDuration)
 	defer ticker.Stop()
 
 	for {
@@ -787,11 +879,13 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 				panic(err)
 			}
 			if date == nil {
-				refreshTime = time.Now().Add(5 * time.Minute)
+				// Refresh in 5 minutes
+				refreshDuration = 5 * time.Minute
 			} else {
-				refreshTime = date.Add(-5 * time.Minute)
+				// Refresh token 5 minutes before it expires
+				refreshDuration = time.Until(date.Add(-5 * time.Minute))
 			}
-			ticker.Reset(time.Until(refreshTime))
+			ticker.Reset(refreshDuration)
 		}
 	}
 }
