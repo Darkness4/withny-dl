@@ -3,7 +3,9 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/rs/zerolog/log"
 )
@@ -26,7 +28,19 @@ func JSONDecodeAndPrintOnError(r io.Reader, v any) error {
 
 	err := decoder.Decode(v)
 	if err != nil {
-		log.Err(err).Str("raw_message", rawData.String()).Msg("failed to decode JSON")
+		log.Err(err).
+			Str("parentCaller", getCaller()).
+			Str("raw_message", rawData.String()).
+			Msg("failed to decode JSON")
 	}
 	return err
+}
+
+func getCaller() string {
+	// Skip 2 frames to get the caller of the function calling this function
+	_, file, line, ok := runtime.Caller(2)
+	if !ok {
+		return "unknown"
+	}
+	return fmt.Sprintf("%s:%d", file, line)
 }
