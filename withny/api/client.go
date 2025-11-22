@@ -255,10 +255,23 @@ func (c *Client) Login(ctx context.Context) (err error) {
 		for {
 			creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
 			if err != nil {
+				var apiErr HTTPError
+				if errors.As(err, &apiErr) {
+					if apiErr.Status == http.StatusServiceUnavailable ||
+						apiErr.Status == http.StatusGatewayTimeout ||
+						apiErr.Status == http.StatusBadGateway {
+						log.Err(err).
+							Int("tries", tries).
+							Msg("failed with server maintenance error, retrying later without increasing tries")
+						time.Sleep(c.loginRetryDelay)
+						continue
+					}
+				}
 				if tries < c.clearCredentialCacheOnFailureAfter {
 					log.Err(err).
 						Int("tries", tries).
-						Msg("failed to refresh token from cache, retrying in 60 seconds")
+						Dur("delay", c.loginRetryDelay).
+						Msg("failed to refresh token from cache, retrying later")
 					tries++
 					time.Sleep(c.loginRetryDelay)
 					continue
