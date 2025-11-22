@@ -81,7 +81,6 @@ type Claims struct {
 
 // Credentials is the credentials for the withny API.
 type Credentials struct {
-	Claims
 	LoginResponse
 }
 
@@ -570,7 +569,8 @@ func (c *Client) LoginWithRefreshToken(
 			err,
 		)
 	}
-	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
+	var claims Claims
+	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &claims)
 	return lr, err
 }
 
@@ -652,7 +652,8 @@ func (c *Client) LoginWithUserPassword(
 			err,
 		)
 	}
-	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &lr.Claims)
+	var claims Claims
+	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &claims)
 	return lr, err
 }
 
@@ -857,7 +858,15 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 	if err != nil {
 		log.Err(err).Msg("failed to get cached credentials")
 	}
-	date, err := creds.GetExpirationTime()
+	var claims Claims
+	parser := jwt.NewParser()
+	_, _, err = parser.ParseUnverified(creds.Token, &claims)
+	if err != nil {
+		log.Err(err).Msg("token cannot be parsed")
+		return err
+	}
+
+	date, err := claims.GetExpirationTime()
 	if err != nil {
 		panic(err)
 	}
@@ -887,7 +896,12 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 			if err != nil {
 				log.Err(err).Msg("failed to get cached credentials")
 			}
-			date, err := creds.GetExpirationTime()
+			_, _, err = parser.ParseUnverified(creds.Token, &claims)
+			if err != nil {
+				log.Err(err).Msg("token cannot be parsed")
+				return err
+			}
+			date, err := claims.GetExpirationTime()
 			if err != nil {
 				panic(err)
 			}
