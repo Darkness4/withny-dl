@@ -302,7 +302,7 @@ func (w *ChannelWatcher) hasNewStreamMethodScrape(
 			err,
 		)
 		if !errors.Is(err, api.HTTPError{}) {
-			if err := notifier.NotifyError(ctx, "", w.params.Labels, err); err != nil {
+			if err := notifier.NotifyError(ctx, channelID, w.params.Labels, err); err != nil {
 				log.Err(err).Msg("notify failed")
 			}
 		}
