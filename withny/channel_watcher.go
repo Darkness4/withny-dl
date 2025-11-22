@@ -321,7 +321,9 @@ func (w *ChannelWatcher) hasNewStreamMethodScrape(
 	}
 
 	res, err := w.validateAndFetchStreamData(ctx, channelID, stream.UUID)
-	if err != nil {
+	if errors.Is(err, api.ErrStreamNotFound) {
+		return HasNewStreamResponse{}, nil
+	} else if err != nil {
 		return HasNewStreamResponse{}, err
 	}
 	if res.HasNewStream {
@@ -600,13 +602,6 @@ func (w *ChannelWatcher) Process(
 		Playlists:      playlists,
 	})
 	chatDownloadCancel()
-
-	if errors.Is(dlErr, api.GetPlaybackURLError{}) {
-		span.RecordError(dlErr)
-		span.SetStatus(codes.Error, dlErr.Error())
-		log.Err(dlErr).Msg("get playback url failed")
-		return dlErr
-	}
 
 	span.AddEvent("post-processing")
 	end := metrics.TimeStartRecording(

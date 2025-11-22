@@ -42,17 +42,6 @@ func (e HTTPError) Error() string {
 	return fmt.Sprintf("HTTP error %s %s, code=%d, body=%s", e.Method, e.URL, e.Status, e.Body)
 }
 
-// GetPlaybackURLError is an error given by the GetStreamPlaybackURL API.
-type GetPlaybackURLError struct {
-	Err      error
-	StreamID string
-}
-
-// Error returns the error message.
-func (e GetPlaybackURLError) Error() string {
-	return e.Err.Error()
-}
-
 // ErrStreamNotFound is when no stream is found when looking for the playback URL.
 var ErrStreamNotFound = errors.New("stream not found")
 
@@ -611,11 +600,6 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
 		switch res.StatusCode {
-		case http.StatusUnauthorized:
-			return "", GetPlaybackURLError{
-				Err:      UnauthorizedError{Body: string(body)},
-				StreamID: streamID,
-			}
 		case http.StatusInternalServerError:
 			var errMsg ErrorResponse
 			err = json.Unmarshal(body, &errMsg)
@@ -630,14 +614,11 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 			}
 			if errMsg.Message == "Stream not found" {
 				// Is a json message.
-				return "", GetPlaybackURLError{
-					Err:      ErrStreamNotFound,
-					StreamID: streamID,
-				}
+				return "", ErrStreamNotFound
 			}
 			return "", HTTPError{
 				Status: res.StatusCode,
-				Body:   string(errMsg.Message),
+				Body:   errMsg.Message,
 				Method: req.Method,
 				URL:    req.URL.String(),
 			}
@@ -662,10 +643,7 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 
 	var parsed string
 	if err = utils.JSONDecodeAndPrintOnError(res.Body, &parsed); err != nil {
-		return "", GetPlaybackURLError{
-			Err:      err,
-			StreamID: streamID,
-		}
+		return "", fmt.Errorf("failed to decode playback url JSON response: %w", err)
 	}
 	return parsed, nil
 }
