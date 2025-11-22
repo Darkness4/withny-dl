@@ -878,6 +878,9 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 		// Refresh token 5 minutes before it expires
 		refreshDuration = time.Until(date.Add(-5 * time.Minute))
 	}
+	log.Debug().
+		Dur("refresh_in", refreshDuration).
+		Msg("next refresh scheduled")
 
 	ticker := time.NewTicker(refreshDuration)
 	defer ticker.Stop()
@@ -914,6 +917,9 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 				// Refresh token 5 minutes before it expires
 				refreshDuration = time.Until(date.Add(-5 * time.Minute))
 			}
+			log.Debug().
+				Dur("refresh_in", refreshDuration).
+				Msg("next refresh scheduled")
 			ticker.Reset(refreshDuration)
 		}
 	}
