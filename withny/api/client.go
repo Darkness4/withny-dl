@@ -879,7 +879,7 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 		refreshDuration = time.Until(date.Add(-5 * time.Minute))
 	}
 	log.Debug().
-		Dur("refresh_in", refreshDuration).
+		Time("refresh_at", time.Now().Add(refreshDuration)).
 		Msg("next refresh scheduled")
 
 	ticker := time.NewTicker(refreshDuration)
@@ -918,7 +918,7 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 				refreshDuration = time.Until(date.Add(-5 * time.Minute))
 			}
 			log.Debug().
-				Dur("refresh_in", refreshDuration).
+				Time("refresh_at", time.Now().Add(refreshDuration)).
 				Msg("next refresh scheduled")
 			ticker.Reset(refreshDuration)
 		}
