@@ -618,7 +618,16 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 			}
 		case http.StatusInternalServerError:
 			var errMsg ErrorResponse
-			_ = json.Unmarshal(body, &errMsg)
+			err = json.Unmarshal(body, &errMsg)
+			if err != nil {
+				// This is not a json message.
+				return "", HTTPError{
+					Status: res.StatusCode,
+					Body:   string(body),
+					Method: req.Method,
+					URL:    req.URL.String(),
+				}
+			}
 			if errMsg.Message == "Stream not found" {
 				// Is a json message.
 				return "", GetPlaybackURLError{
@@ -626,6 +635,13 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 					StreamID: streamID,
 				}
 			}
+			return "", HTTPError{
+				Status: res.StatusCode,
+				Body:   string(errMsg.Message),
+				Method: req.Method,
+				URL:    req.URL.String(),
+			}
+
 		default:
 			err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 			log.Err(err).
