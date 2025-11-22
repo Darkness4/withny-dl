@@ -892,6 +892,8 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 				panic(err)
 			}
 			if date == nil {
+				log.Warn().
+					Msg("expiration date hasn't been found, refreshing in 5 minutes, this shouldn't happen when refreshing from cache")
 				// Refresh in 5 minutes
 				refreshDuration = 5 * time.Minute
 			} else {
