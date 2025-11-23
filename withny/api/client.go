@@ -35,11 +35,13 @@ const (
 const maintenanceKeyword = "メンテナンス"
 
 // mapMaintenanceToHTTPError maps the maintenance keyword to the correct HTTP error.
-func mapMaintenanceToHTTPError(body string) error {
+func mapMaintenanceToHTTPError(url, method, body string) error {
 	if strings.Contains(body, maintenanceKeyword) {
 		return HTTPError{
+			URL:    url,
+			Method: method,
 			Status: http.StatusServiceUnavailable,
-			Body:   body,
+			Body:   "maintenance",
 		}
 	}
 	return nil
@@ -391,7 +393,7 @@ func (c *Client) GetUser(ctx context.Context, channelID string) (GetUserResponse
 		return GetUserResponse{}, err
 	}
 
-	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
 		return GetUserResponse{}, err
 	}
 
@@ -471,7 +473,7 @@ func (c *Client) GetStreams(
 		return GetStreamsResponse{}, err
 	}
 
-	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
 		return GetStreamsResponse{}, err
 	}
 
@@ -555,7 +557,7 @@ func (c *Client) LoginWithRefreshToken(
 		return Credentials{}, err
 	}
 
-	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
 		return Credentials{}, err
 	}
 
@@ -638,7 +640,7 @@ func (c *Client) LoginWithUserPassword(
 		return Credentials{}, err
 	}
 
-	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
 		return Credentials{}, err
 	}
 
@@ -737,7 +739,7 @@ func (c *Client) GetStreamPlaybackURL(ctx context.Context, streamID string) (str
 		}
 	}
 
-	if err := mapMaintenanceToHTTPError(string(body)); err != nil {
+	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
 		return "", err
 	}
 
