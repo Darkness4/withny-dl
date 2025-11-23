@@ -253,17 +253,22 @@ func (w *ChannelWatcher) hasNewStreamMethodAPI(
 		if filterChannelID == "" {
 			// Filter is empty means we want to download any channel.
 			// Fetch the channelID from the stream.
-			if s.Cast == nil || s.Cast.AgencySecret.ChannelName == "" {
+			if s.Cast == nil ||
+				(s.Cast.AgencySecret.Username == "" && s.Cast.User.Username == "") {
 				// Stream is scheduled to be live, but not online yet.
 				log.Warn().Any("stream", s).Msg("stream is not ready")
 				continue
 			}
 
+			channelID = s.Cast.AgencySecret.Username
+			if s.Cast.User.Username != "" {
+				channelID = s.Cast.User.Username
+			}
+
 			// Check if stream is an ignored channel.
-			if slices.Contains(w.params.Ignore, s.Cast.AgencySecret.ChannelName) {
+			if slices.Contains(w.params.Ignore, channelID) {
 				continue
 			}
-			channelID = s.Cast.AgencySecret.ChannelName
 		} else {
 			// Filter is not empty means we want to download a specific channel.
 			channelID = filterChannelID

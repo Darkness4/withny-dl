@@ -33,11 +33,19 @@ func findAnyLiveStream(t *testing.T, client *api.Client, passCode string) (usern
 	// Find a live stream that is not restricted
 	for _, stream := range streams {
 		if stream.Price.String() == "0" {
-			return stream.Cast.AgencySecret.ChannelName
+			channelID := stream.Cast.AgencySecret.Username
+			if stream.Cast.User.Username != "" {
+				channelID = stream.Cast.User.Username
+			}
+			return channelID
 		}
 	}
 
-	return streams[0].Cast.AgencySecret.ChannelName
+	channelID := streams[0].Cast.AgencySecret.Username
+	if streams[0].Cast.User.Username != "" {
+		channelID = streams[0].Cast.User.Username
+	}
+	return channelID
 }
 
 func TestClient(t *testing.T) {

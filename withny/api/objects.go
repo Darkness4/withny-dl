@@ -76,10 +76,10 @@ type CastSocialMediaAccount struct {
 
 // AgencySecret is the agency secret of the cast.
 type AgencySecret struct {
-	ID          json.Number `json:"id"`
-	UUID        string      `json:"uuid"`
-	ChannelName string      `json:"username"`
-	Name        string      `json:"name"`
+	ID       json.Number `json:"id"`
+	UUID     string      `json:"uuid"`
+	Username string      `json:"username"`
+	Name     string      `json:"name"`
 }
 
 // User is the user of the stream.
