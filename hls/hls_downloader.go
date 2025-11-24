@@ -288,20 +288,23 @@ func (hls *Downloader) fillQueue(
 			// Failed to fetch playlist in time
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, syscall.ECONNRESET) {
 				errorCount++
-				log.Err(err).
-					Int("error.count", errorCount).
-					Int("error.max", hls.packetLossMax).
-					Msg("GetFragmentURLs failed, retrying")
 				metrics.Downloads.Errors.Add(ctx, 1)
 
 				// Ignore the error if tolerated
 				if errorCount <= hls.packetLossMax {
+					log.Err(err).
+						Int("error.count", errorCount).
+						Int("error.max", hls.packetLossMax).
+						Msg("GetFragmentURLs failed, retrying")
 					time.Sleep(time.Second)
 					continue
 				}
 			}
 
-			log.Err(err).Msg("GetFragmentURLs failed")
+			log.Err(err).
+				Int("error.count", errorCount).
+				Int("error.max", hls.packetLossMax).
+				Msg("GetFragmentURLs failed, aborting")
 
 			// It can also exit here on context cancelled
 			return err
@@ -498,15 +501,18 @@ func (hls *Downloader) Read(
 					continue // Continue to wait for fillQueue to finish
 				}
 				errorCount++
-				log.Error().
-					Int("error.count", errorCount).
-					Int("error.max", hls.packetLossMax).
-					Err(err).
-					Msg("a packet failed to be downloaded, skipping")
 				metrics.Downloads.Errors.Add(ctx, 1)
 				if errorCount <= hls.packetLossMax {
+					log.Err(err).
+						Int("error.count", errorCount).
+						Int("error.max", hls.packetLossMax).
+						Msg("a packet failed to be downloaded, skipping")
 					continue
 				}
+				log.Err(err).
+					Int("error.count", errorCount).
+					Int("error.max", hls.packetLossMax).
+					Msg("a packet failed to be downloaded, aborting fillqueue")
 				cancel()
 				continue // Continue to wait for fillQueue to finish
 			}

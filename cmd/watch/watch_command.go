@@ -97,7 +97,8 @@ var Command = &cli.Command{
 		cleanChan := make(chan os.Signal, 1)
 		signal.Notify(cleanChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		go func() {
-			<-cleanChan
+			sig := <-cleanChan
+			log.Warn().Stringer("signal", sig).Msg("Received signal, shutting down")
 			cancel()
 		}()
 
