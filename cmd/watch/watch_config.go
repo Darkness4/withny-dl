@@ -104,7 +104,7 @@ func ObserveConfig(ctx context.Context, filename string, configChan chan<- *Conf
 		select {
 		case <-ctx.Done():
 			// The parent context was canceled, exit the loop
-			log.Err(ctx.Err()).Msg("watcher context canceled")
+			log.Err(ctx.Err()).AnErr("cause", context.Cause(ctx)).Msg("watcher context canceled")
 			return
 		case <-ticker.C:
 			lastModTime, err = loadConfigOnModification(ctx, filename, configChan, lastModTime)
@@ -158,7 +158,7 @@ func loadConfigOnModification(
 			// Config sent successfully
 		case <-ctx.Done():
 			// The parent context was canceled, exit the loop
-			log.Err(ctx.Err()).
+			log.Err(ctx.Err()).AnErr("cause", context.Cause(ctx)).
 				Msg("config reloader context canceled while the config was being sent")
 			return lastModTime, ctx.Err()
 		}
@@ -173,7 +173,7 @@ func ConfigReloader(
 	handleConfig func(ctx context.Context, config *Config),
 ) error {
 	var configContext context.Context
-	var configCancel context.CancelFunc
+	var configCancel context.CancelCauseFunc
 	// Channel used to assure only one handleConfig can be launched
 	doneChan := make(chan struct{})
 
@@ -181,7 +181,7 @@ func ConfigReloader(
 		select {
 		case newConfig := <-configChan:
 			if configContext != nil && configCancel != nil {
-				configCancel()
+				configCancel(nil) // Cancel the previous config handler
 				select {
 				case <-doneChan:
 					log.Info().Msg("loading new config")
@@ -189,7 +189,7 @@ func ConfigReloader(
 					log.Fatal().Msg("couldn't load a new config because of a deadlock")
 				}
 			}
-			configContext, configCancel = context.WithCancel(ctx)
+			configContext, configCancel = context.WithCancelCause(ctx)
 			go func() {
 				log.Info().Msg("loaded new config")
 				handleConfig(configContext, newConfig)
@@ -197,7 +197,7 @@ func ConfigReloader(
 			}()
 		case <-ctx.Done():
 			if configContext != nil && configCancel != nil {
-				configCancel()
+				configCancel(ctx.Err())
 				configContext = nil
 			}
 

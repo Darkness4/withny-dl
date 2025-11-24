@@ -469,7 +469,7 @@ func (hls *Downloader) Read(
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "hls.Read")
 	defer span.End()
 
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancelCause(ctx)
 
 	errChan := make(chan error) // Blocking channel is used to wait for fillQueue to finish.
 	defer close(errChan)
@@ -497,7 +497,7 @@ func (hls *Downloader) Read(
 				span.RecordError(err)
 				if err == ErrHLSForbidden {
 					log.Err(err).Msg("stream was interrupted")
-					cancel()
+					cancel(fmt.Errorf("stream was interrupted: %w", err))
 					continue // Continue to wait for fillQueue to finish
 				}
 				errorCount++
@@ -513,13 +513,13 @@ func (hls *Downloader) Read(
 					Int("error.count", errorCount).
 					Int("error.max", hls.packetLossMax).
 					Msg("a packet failed to be downloaded, aborting fillqueue")
-				cancel()
+				cancel(fmt.Errorf("a packet failed to be downloaded: %w", err))
 				continue // Continue to wait for fillQueue to finish
 			}
 
 		// fillQueue will exit here if the stream has ended or context is canceled.
 		case err := <-errChan:
-			defer cancel()
+			defer cancel(fmt.Errorf("fill queue exited: %w", err))
 			if err == nil {
 				log.Panic().Msg("didn't expect a nil error")
 			}

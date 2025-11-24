@@ -91,7 +91,7 @@ var Command = &cli.Command{
 		},
 	},
 	Action: func(cCtx *cli.Context) error {
-		ctx, cancel := context.WithCancel(cCtx.Context)
+		ctx, cancel := context.WithCancelCause(cCtx.Context)
 
 		// Trap cleanup
 		cleanChan := make(chan os.Signal, 1)
@@ -99,7 +99,7 @@ var Command = &cli.Command{
 		go func() {
 			sig := <-cleanChan
 			log.Warn().Stringer("signal", sig).Msg("Received signal, shutting down")
-			cancel()
+			cancel(fmt.Errorf("signal received: %s", sig))
 		}()
 
 		// Setup telemetry

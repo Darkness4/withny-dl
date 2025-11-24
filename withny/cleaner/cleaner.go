@@ -266,7 +266,9 @@ func CleanPeriodically(
 		select {
 		case <-ctx.Done():
 			// Context cancelled, exit the goroutine
-			log.Err(ctx.Err()).Msg("context cancelled, stopping cleaner")
+			log.Err(ctx.Err()).
+				AnErr("cause", context.Cause(ctx)).
+				Msg("context cancelled, stopping cleaner")
 			return
 		case <-ticker.C:
 			// Execute the cleanup routine

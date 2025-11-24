@@ -95,7 +95,9 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 				for {
 					select {
 					case <-ctx.Done():
-						log.Err(ctx.Err()).Msg("channel watcher context done")
+						log.Err(ctx.Err()).
+							AnErr("cause", context.Cause(ctx)).
+							Msg("channel watcher context done")
 						return HasNewStreamResponse{}
 					case <-ticker.C:
 						res, err := w.HasNewStream(ctx)
@@ -193,7 +195,10 @@ func (w *ChannelWatcher) waitProcessingOrFatal(timeout time.Duration) {
 				return
 			}
 		case <-ctx.Done():
-			log.Fatal().Msg("timeout waiting for processing to finish")
+			log.Fatal().
+				Err(ctx.Err()).
+				AnErr("cause", context.Cause(ctx)).
+				Msg("timeout waiting for processing to finish")
 		}
 	}
 }
@@ -588,7 +593,7 @@ func (w *ChannelWatcher) Process(
 		log.Err(err).Msg("notify failed")
 	}
 
-	chatDownloadCtx, chatDownloadCancel := context.WithCancel(ctx)
+	chatDownloadCtx, chatDownloadCancel := context.WithCancelCause(ctx)
 	if w.params.WriteChat {
 		go func() {
 			if err := DownloadChat(chatDownloadCtx, api.Scraper{Client: w.Client}, Chat{
@@ -606,7 +611,7 @@ func (w *ChannelWatcher) Process(
 		OutputFileName: fnameStream,
 		Playlists:      playlists,
 	})
-	chatDownloadCancel()
+	chatDownloadCancel(nil)
 
 	span.AddEvent("post-processing")
 	end := metrics.TimeStartRecording(

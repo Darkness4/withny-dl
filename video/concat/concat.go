@@ -128,8 +128,8 @@ func Do(ctx context.Context, output string, inputs []string, opts ...Option) err
 	defer end()
 	metrics.Concat.Runs.Add(ctx, 1)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 
 	log.Info().Str("output", output).Strs("inputs", inputs).Any("options", o).Msg("concat")
 
