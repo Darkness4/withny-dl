@@ -161,7 +161,7 @@ var Command = &cli.Command{
 				return
 			}
 		})
-		mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, "OK")
 		})
 		mux.Handle("GET /metrics", promhttp.Handler())

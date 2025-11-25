@@ -106,7 +106,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
-	for count = range hls.playlistRetries {
+	for count = 0; count <= hls.playlistRetries; count++ {
 		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		defer cancel()
 		req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
@@ -370,7 +370,7 @@ func (hls *Downloader) download(
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
-	for count := range hls.fragmentRetries {
+	for count = 0; count <= hls.fragmentRetries; count++ {
 		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		defer cancel()
 		req, err := hls.NewAuthRequestWithContext(ctx, "GET", url, nil)

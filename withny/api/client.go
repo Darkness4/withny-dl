@@ -788,7 +788,7 @@ func (c *Client) GetPlaylists(
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
-	for count = range playlistRetries {
+	for count = 0; count <= playlistRetries; count++ {
 		res, err := c.Do(req)
 		if err != nil {
 			log.Err(err).Msg("failed to get playlists")

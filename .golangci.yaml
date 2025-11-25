@@ -9,7 +9,6 @@ linters:
     - revive
     - ineffassign
     - errorlint
-    - intrange
     - godot
     - interfacebloat
     - misspell
