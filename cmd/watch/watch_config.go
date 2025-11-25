@@ -208,7 +208,7 @@ func ConfigReloader(
 			select {
 			case <-doneChan:
 				log.Info().Msg("config reloader graceful exit")
-			case <-time.After(30 * time.Second):
+			case <-time.After(30 * time.Minute): // There is a low probability of a deadlock. 30 minutes should be enough to wait for the graceful exit.
 				log.Panic().Msg("config reloader force fatal exit")
 			}
 
