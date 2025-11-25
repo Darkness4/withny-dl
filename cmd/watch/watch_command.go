@@ -346,7 +346,8 @@ func handleConfig(ctx context.Context, version string, config *Config) error {
 }
 
 func checkVersion(ctx context.Context, client *http.Client, version string) {
-	if strings.Contains(version, "-") { // Version containing a hyphen is a development version.
+	if strings.Contains(version, "dev") ||
+		strings.Contains(version, "-") { // Version containing a hyphen is a development version.
 		log.Warn().Str("version", version).Msg("development version, skipping version check")
 		return
 	}
