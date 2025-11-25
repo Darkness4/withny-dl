@@ -106,7 +106,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
-	for count = 0; count <= hls.playlistRetries; count++ {
+	for count = range hls.playlistRetries {
 		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		defer cancel()
 		req, err := hls.NewAuthRequestWithContext(ctx, "GET", hls.url, nil)
@@ -242,7 +242,7 @@ func (hls *Downloader) GetFragmentURLs(ctx context.Context) ([]Fragment, error) 
 	return fragments, nil
 }
 
-// fillQueue continuously fetches fragments url until stream end
+// fillQueue continuously fetches fragments url until stream end.
 func (hls *Downloader) fillQueue(
 	ctx context.Context,
 	fragChan chan<- Fragment,
@@ -370,7 +370,7 @@ func (hls *Downloader) download(
 	var respBody io.ReadCloser
 	var lastHTTPError HTTPError
 	var count int
-	for count = 0; count <= hls.fragmentRetries; count++ {
+	for count := range hls.fragmentRetries {
 		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		defer cancel()
 		req, err := hls.NewAuthRequestWithContext(ctx, "GET", url, nil)
@@ -495,7 +495,7 @@ func (hls *Downloader) Read(
 				}
 				log.Err(err).Msg("failed to download fragment")
 				span.RecordError(err)
-				if err == ErrHLSForbidden {
+				if errors.Is(err, ErrHLSForbidden) {
 					log.Err(err).Msg("stream was interrupted")
 					cancel(fmt.Errorf("stream was interrupted: %w", err))
 					continue // Continue to wait for fillQueue to finish
@@ -524,7 +524,7 @@ func (hls *Downloader) Read(
 				log.Panic().Msg("didn't expect a nil error")
 			}
 
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				log.Info().Msg("hls downloader exited with success")
 			} else if errors.Is(err, context.Canceled) {
 				log.Info().Msg("hls downloader canceled")

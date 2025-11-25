@@ -40,14 +40,14 @@ func TestConfigReloaderTwoConfigs(t *testing.T) {
 	handleConfigCallCount := 0
 	handleConfigCalls := make([]*watch.Config, 2)
 	doneChan := make(chan struct{})
-	handleConfigMock := func(ctx context.Context, cfg *watch.Config) {
+	handleConfigMock := func(ctx context.Context, cfg *watch.Config) error {
 		handleConfigCalls[handleConfigCallCount] = cfg
 		handleConfigCallCount++
 		select {
 		case doneChan <- struct{}{}:
-			return
+			return nil
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		}
 	}
 
@@ -115,7 +115,7 @@ func TestConfigReloaderCancellation(t *testing.T) {
 	handleConfigCalls := make([]*watch.Config, 2)
 	readyChan := make(chan struct{})
 	doneChan := make(chan struct{})
-	handleConfigMock := func(ctx context.Context, cfg *watch.Config) {
+	handleConfigMock := func(ctx context.Context, cfg *watch.Config) error {
 		handleConfigCalls[handleConfigCallCount] = cfg
 		handleConfigCallCount++
 		fmt.Println("waiting")
@@ -123,6 +123,7 @@ func TestConfigReloaderCancellation(t *testing.T) {
 		<-ctx.Done()
 		fmt.Println("finishing")
 		doneChan <- struct{}{}
+		return nil
 	}
 
 	// Launch the configReloader function in a separate goroutine

@@ -134,7 +134,7 @@ func TestSyncSet_ConcurrentAddRemove(t *testing.T) {
 	assert.Equal(t, numGoroutines, s.Len())
 
 	// Remove items concurrently
-	for i := 0; i < numGoroutines/2; i++ {
+	for i := range numGoroutines / 2 {
 		removeWg.Add(1)
 		go func(val int) {
 			defer removeWg.Done()
@@ -148,7 +148,7 @@ func TestSyncSet_ConcurrentAddRemove(t *testing.T) {
 	assert.Equal(t, expected, s.Len())
 
 	// Verify the correct items remain
-	for i := 0; i < numGoroutines/2; i++ {
+	for i := range numGoroutines / 2 {
 		assert.False(t, s.Contains(i), "item %d should be removed", i)
 	}
 	for i := numGoroutines / 2; i < numGoroutines; i++ {

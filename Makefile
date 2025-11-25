@@ -66,6 +66,10 @@ $(pkgsite):
 lint: $(golint)
 	$(golint) run ./...
 
+.PHONY: lint-fix
+lint-fix: $(golint)
+	$(golint) run ./... --fix
+
 .PHONY: clean
 clean:
 	rm -rf bin/

@@ -170,7 +170,7 @@ func loadConfigOnModification(
 func ConfigReloader(
 	ctx context.Context,
 	configChan <-chan *Config,
-	handleConfig func(ctx context.Context, config *Config),
+	handleConfig func(ctx context.Context, config *Config) error,
 ) error {
 	var configContext context.Context
 	var configCancel context.CancelCauseFunc
@@ -186,13 +186,16 @@ func ConfigReloader(
 				case <-doneChan:
 					log.Info().Msg("loading new config")
 				case <-time.After(30 * time.Second):
-					log.Fatal().Msg("couldn't load a new config because of a deadlock")
+					log.Panic().Msg("couldn't load a new config because of a deadlock")
 				}
 			}
 			configContext, configCancel = context.WithCancelCause(ctx)
 			go func() {
 				log.Info().Msg("loaded new config")
-				handleConfig(configContext, newConfig)
+				if err := handleConfig(configContext, newConfig); err != nil {
+					log.Err(err).Msg("failed to handle config")
+					configCancel(err)
+				}
 				doneChan <- struct{}{}
 			}()
 		case <-ctx.Done():
@@ -206,7 +209,7 @@ func ConfigReloader(
 			case <-doneChan:
 				log.Info().Msg("config reloader graceful exit")
 			case <-time.After(30 * time.Second):
-				log.Fatal().Msg("config reloader force fatal exit")
+				log.Panic().Msg("config reloader force fatal exit")
 			}
 
 			// The context was canceled, exit the loop

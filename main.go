@@ -2,6 +2,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 
 	"github.com/Darkness4/withny-dl/cmd/clean"
@@ -73,7 +75,7 @@ var app = &cli.App{
 
 func main() {
 	log.Logger = log.Logger.With().Caller().Logger()
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatal().Err(err).Msg("application finished")
 	}
 }

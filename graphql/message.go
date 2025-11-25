@@ -6,13 +6,13 @@ import (
 )
 
 var (
-	// ConnectionInit is the message to initialize the connection. (client -> server)
+	// ConnectionInit is the message to initialize the connection. (client -> server).
 	ConnectionInit = map[string]any{
 		"type": "connection_init",
 	}
 )
 
-// ConnectionAckMessage is the message to acknowledge the connection. (server -> client)
+// ConnectionAckMessage is the message to acknowledge the connection. (server -> client).
 type ConnectionAckMessage struct {
 	Type    string         `json:"type"`
 	Payload map[string]any `json:"payload,omitempty"`

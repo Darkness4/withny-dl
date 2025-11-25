@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -36,6 +37,12 @@ import (
 	"github.com/Darkness4/withny-dl/withny/cleaner"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
+)
+
+const (
+	_shutdownPeriod      = 10 * time.Second
+	_shutdownHardPeriod  = 3 * time.Second
+	_readinessDrainDelay = 5 * time.Second
 )
 
 // Hardcoded URL to check for new versions.
@@ -91,7 +98,7 @@ var Command = &cli.Command{
 		},
 	},
 	Action: func(cCtx *cli.Context) error {
-		ctx, cancel := context.WithCancelCause(cCtx.Context)
+		ctx, stop := context.WithCancelCause(cCtx.Context)
 
 		// Trap cleanup
 		cleanChan := make(chan os.Signal, 1)
@@ -99,13 +106,13 @@ var Command = &cli.Command{
 		go func() {
 			sig := <-cleanChan
 			log.Warn().Stringer("signal", sig).Msg("Received signal, shutting down")
-			cancel(fmt.Errorf("signal received: %s", sig))
+			stop(fmt.Errorf("signal received: %s", sig))
 		}()
 
 		// Setup telemetry
 		prom, err := prometheus.New()
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to create prometheus exporter")
+			return fmt.Errorf("failed to create prometheus exporter: %w", err)
 		}
 
 		telOpts := []telemetry.Option{
@@ -115,7 +122,7 @@ var Command = &cli.Command{
 		if enableMetricsExporting {
 			metricExporter, err := otlpmetricgrpc.New(ctx)
 			if err != nil {
-				log.Fatal().Err(err).Msg("failed to create OTEL metric exporter")
+				return fmt.Errorf("failed to create OTEL metric exporter: %w", err)
 			}
 			telOpts = append(telOpts, telemetry.WithMetricExporter(metricExporter))
 		}
@@ -123,7 +130,7 @@ var Command = &cli.Command{
 		if enableTracesExporting {
 			traceExporter, err := otlptracegrpc.New(ctx)
 			if err != nil {
-				log.Fatal().Err(err).Msg("failed to create OTEL trace exporter")
+				return fmt.Errorf("failed to create OTEL trace exporter: %w", err)
 			}
 			telOpts = append(telOpts, telemetry.WithTraceExporter(traceExporter))
 		}
@@ -132,7 +139,7 @@ var Command = &cli.Command{
 			telOpts...,
 		)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to setup OTEL SDK")
+			return fmt.Errorf("failed to setup OTEL SDK: %w", err)
 		}
 		defer func() {
 			if err := shutdown(ctx); err != nil && !errors.Is(err, context.Canceled) {
@@ -143,32 +150,76 @@ var Command = &cli.Command{
 		configChan := make(chan *Config)
 		go ObserveConfig(ctx, configPath, configChan)
 
-		go func() {
-			http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-				s := state.DefaultState.ReadState()
-				enc := json.NewEncoder(w)
-				enc.SetIndent("", "  ")
-				if err := enc.Encode(s); err != nil {
-					log.Err(err).Msg("failed to write state")
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-			})
-			http.Handle("/metrics", promhttp.Handler())
-			log.Info().Str("listenAddress", pprofListenAddress).Msg("listening")
-			if err := http.ListenAndServe(pprofListenAddress, nil); err != nil {
-				log.Fatal().Err(err).Msg("fail to serve http")
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /", func(w http.ResponseWriter, _ *http.Request) {
+			s := state.DefaultState.ReadState()
+			enc := json.NewEncoder(w)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(s); err != nil {
+				log.Err(err).Msg("failed to write state")
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			log.Fatal().Msg("http server stopped")
+		})
+		mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "OK")
+		})
+		mux.Handle("GET /metrics", promhttp.Handler())
+		ongoingCtx, stopOngoingGracefully := context.WithCancel(
+			log.Logger.WithContext(context.Background()),
+		)
+		srv := &http.Server{
+			Addr:         pprofListenAddress,
+			Handler:      mux,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  30 * time.Second,
+			BaseContext:  func(_ net.Listener) context.Context { return ongoingCtx },
+		}
+		go func() {
+			log.Info().Str("listenAddress", pprofListenAddress).Msg("listening")
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				panic(err)
+			}
 		}()
 
-		return ConfigReloader(ctx, configChan, func(ctx context.Context, config *Config) {
-			handleConfig(ctx, cCtx.App.Version, config)
+		cfgErr := ConfigReloader(ctx, configChan, func(ctx context.Context, config *Config) error {
+			return handleConfig(ctx, cCtx.App.Version, config)
 		})
+		if cfgErr != nil {
+			log.Err(cfgErr).Msg("config reloader stopped")
+		}
+
+		// ---GRACEFUL SHUTDOWN---
+		stop(cfgErr)
+		signal.Stop(cleanChan)
+		log.Info().
+			Stringer("delay", _readinessDrainDelay).
+			Msg("Received shutdown signal, gracefully shutting down HTTP server.")
+
+		// Give time for readiness check to propagate
+		time.Sleep(_readinessDrainDelay)
+		log.Info().Msg(
+			"Readiness check propagated, now waiting for ongoing requests to finish.",
+		)
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), _shutdownPeriod)
+		defer cancel()
+		err = srv.Shutdown(shutdownCtx)
+		stopOngoingGracefully()
+		if err != nil {
+			log.Info().Msg(
+				"Failed to wait for ongoing requests to finish, waiting for forced cancellation.",
+			)
+			time.Sleep(_shutdownHardPeriod)
+		}
+		log.Info().Msg("Server shut down gracefully.")
+
+		return cfgErr
 	},
 }
 
-func handleConfig(ctx context.Context, version string, config *Config) {
+func handleConfig(ctx context.Context, version string, config *Config) error {
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to initialize cookie jar")
@@ -187,7 +238,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 	}
 
 	if config.CredentialsFile == "" {
-		log.Fatal().Msg("no credentials file configured")
+		return errors.New("no credentials file configured")
 	}
 	if config.CachedCredentialsFile == "" {
 		config.CachedCredentialsFile = "withny-dl.json"
@@ -201,6 +252,8 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 		api.WithLoginRetryDelay(config.LoginRetryDelay),
 	)
 
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	go func() {
 		if err := client.LoginLoop(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -208,7 +261,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 				return
 			}
 
-			log.Fatal().Err(err).Msg("failed to login")
+			cancel(fmt.Errorf("failed to login: %w", err))
 		}
 	}()
 
@@ -236,12 +289,13 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
+			log.Err(fmt.Errorf("panic: %v", err)).Stack().Msg("program panicked")
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 			defer cancel()
 			if err := notifier.NotifyPanicked(ctx, err); err != nil {
 				log.Err(err).Msg("notify failed")
 			}
-			os.Exit(1)
+			os.Exit(2)
 		}
 	}()
 
@@ -275,6 +329,7 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 
 			select {
 			case <-ctx.Done():
+				log.Err(ctx.Err()).AnErr("cause", ctx.Err()).Msg("channel watcher stopped")
 				return
 			default:
 				log.Panic().Msg("channel watcher stopped before parent context is canceled")
@@ -286,6 +341,8 @@ func handleConfig(ctx context.Context, version string, config *Config) {
 	}
 
 	wg.Wait()
+
+	return nil
 }
 
 func checkVersion(ctx context.Context, client *http.Client, version string) {

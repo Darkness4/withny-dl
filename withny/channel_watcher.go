@@ -15,6 +15,7 @@ import (
 	"github.com/Darkness4/withny-dl/notify/notifier"
 	"github.com/Darkness4/withny-dl/state"
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
+	"github.com/Darkness4/withny-dl/utils/ptr"
 	"github.com/Darkness4/withny-dl/utils/sync"
 	"github.com/Darkness4/withny-dl/utils/try"
 	"github.com/Darkness4/withny-dl/video/concat"
@@ -116,7 +117,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 			if !res.HasNewStream {
 				// Context has been canceled.
 				log.Warn().Msg("channel watcher context canceled, waiting for processing to finish")
-				w.waitProcessingOrFatal(300 * time.Second)
+				w.waitProcessingOrPanic(300 * time.Second)
 				log.Warn().Msg("processing finished")
 				return
 			}
@@ -139,6 +140,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
+					log.Err(err).Msg("process canceled")
 					state.DefaultState.SetChannelState(
 						res.User.Username,
 						state.DownloadStateCanceled,
@@ -152,6 +154,7 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 						log.Err(err).Msg("notify failed")
 					}
 				} else {
+					log.Err(err).Msg("process failed with error")
 					state.DefaultState.SetChannelError(res.User.Username, err)
 					if err := notifier.NotifyError(
 						context.Background(),
@@ -179,8 +182,8 @@ func (w *ChannelWatcher) Watch(ctx context.Context) {
 	}
 }
 
-// waitProcessingOrFatal waits for the all the processes to finish.
-func (w *ChannelWatcher) waitProcessingOrFatal(timeout time.Duration) {
+// waitProcessingOrPanic waits for the all the processes to finish.
+func (w *ChannelWatcher) waitProcessingOrPanic(timeout time.Duration) {
 	// Periodically check if all the processes are done.
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -195,7 +198,7 @@ func (w *ChannelWatcher) waitProcessingOrFatal(timeout time.Duration) {
 				return
 			}
 		case <-ctx.Done():
-			log.Fatal().
+			log.Panic().
 				Err(ctx.Err()).
 				AnErr("cause", context.Cause(ctx)).
 				Msg("timeout waiting for processing to finish")
@@ -611,6 +614,12 @@ func (w *ChannelWatcher) Process(
 		OutputFileName: fnameStream,
 		Playlists:      playlists,
 	})
+	log = ptr.Ref(log.With().AnErr("download_error", dlErr).Logger())
+	if dlErr != nil {
+		log.Err(dlErr).Msg("download failed")
+		span.RecordError(dlErr)
+		span.SetStatus(codes.Error, dlErr.Error())
+	}
 	chatDownloadCancel(nil)
 
 	span.AddEvent("post-processing")
@@ -732,7 +741,7 @@ func (w *ChannelWatcher) Process(
 	}
 
 	span.AddEvent("done")
-	log.Info().Msg("done")
+	log.Info().Msg("post-process done")
 
 	return dlErr
 }
