@@ -16,10 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	// Import the pprof package to enable profiling via HTTP.
-	_ "net/http/pprof"
-	// Import the godeltaprof package to enable continuous profiling via Pyroscope.
-	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
+	pprof "net/http/pprof"
+
+	godeltaprof "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -165,6 +164,15 @@ var Command = &cli.Command{
 			fmt.Fprint(w, "OK")
 		})
 		mux.Handle("GET /metrics", promhttp.Handler())
+		mux.HandleFunc("GET /debug/pprof/", pprof.Index)
+		mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
+		mux.HandleFunc("GET /debug/pprof/delta_heap", godeltaprof.Heap)
+		mux.HandleFunc("GET /debug/pprof/delta_block", godeltaprof.Block)
+		mux.HandleFunc("GET /debug/pprof/delta_mutex", godeltaprof.Mutex)
+
 		ongoingCtx, stopOngoingGracefully := context.WithCancel(
 			log.Logger.WithContext(context.Background()),
 		)
