@@ -1,10 +1,10 @@
+go
 //go:build contract
 
 package api_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -38,7 +38,6 @@ func TestScraper(t *testing.T) {
 		)
 		require.NoError(t, err)
 		require.NotEmpty(t, out)
-		fmt.Println(out, suuid)
 		_, err = url.Parse(out)
 		require.NoError(t, err)
 		require.NotEmpty(t, suuid)
