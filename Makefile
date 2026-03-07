@@ -57,7 +57,7 @@ integration:
 	go test -race -covermode=atomic -tags=integration -timeout=300s ./...
 
 $(golint):
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
 $(pkgsite):
 	go install golang.org/x/pkgsite/cmd/pkgsite@latest

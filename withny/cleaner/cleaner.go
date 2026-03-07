@@ -100,8 +100,7 @@ func Scan(
 
 		if !d.IsDir() {
 			name := strings.TrimSuffix(d.Name(), filepath.Ext(d.Name()))
-			if strings.HasSuffix(name, ".combined") {
-				prefix := strings.TrimSuffix(name, ".combined")
+			if prefix, ok := strings.CutSuffix(name, ".combined"); ok {
 				dir := filepath.Dir(path)
 
 				finfo, err := d.Info()
