@@ -146,6 +146,12 @@ func (f *FileCache) Get() (api.CachedCredentials, error) {
 //
 // To avoid erasing the credentials file, it will reads the current credentials and merge the new credentials.
 func (f *FileCache) Set(creds api.Credentials) error {
+	if creds.AccessToken == "" {
+		panic("Set was called when accesstoken was empty! Call the developer!")
+	}
+	if creds.SessionToken == "" {
+		panic("Set was called when sessiontoken was empty! Call the developer!")
+	}
 	current, err := f.Get()
 	if err != nil {
 		return err
@@ -158,6 +164,7 @@ func (f *FileCache) Set(creds api.Credentials) error {
 	defer file.Close()
 
 	current.SessionToken = creds.SessionToken
+	current.AccessToken = creds.AccessToken
 
 	// Encrypt the JSON data and write it to the writer
 	decrypted, err := json.Marshal(current)

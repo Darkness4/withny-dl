@@ -220,6 +220,9 @@ func (c *Client) NewAuthRequestWithContext(
 		log.Err(err).Msg("failed to get cached credentials")
 		return nil, fmt.Errorf("failed to get cached credentials: %w", err)
 	}
+	if creds.AccessToken == "" {
+		panic("NewAuthRequestWithContext was called when accesstoken was empty! Call the developer!")
+	}
 	req.Header.Set("Authorization", "Bearer "+creds.AccessToken)
 	req.Header.Set("User-Agent", c.userAgent)
 	return req, nil
@@ -254,7 +257,7 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 	case cachedCreds.SessionToken != "":
 		tries := 0
 		for {
-			creds, err = c.RecycleSession(ctx, cachedCreds.SessionToken)
+			creds, err = c.recycleSession(ctx, cachedCreds.SessionToken)
 			if err != nil {
 				var apiErr HTTPError
 				if errors.As(err, &apiErr) {
@@ -285,12 +288,12 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 				if err := c.credentialsCache.Invalidate(); err != nil {
 					log.Err(err).Msg("failed to invalidate cache")
 				}
-				creds, err = c.InitSession(ctx)
+				creds, err = c.initSession(ctx)
 			}
 			break
 		}
 	default:
-		creds, err = c.InitSession(ctx)
+		creds, err = c.initSession(ctx)
 	}
 	if err != nil {
 		log.Err(err).Msg("failed to login")
@@ -304,7 +307,7 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 	return nil
 }
 
-func (c *Client) InitSession(ctx context.Context) (Credentials, error) {
+func (c *Client) initSession(ctx context.Context) (Credentials, error) {
 	creds, err := c.credentialsReader.Read()
 	if err != nil {
 		log.Err(err).Msg("failed to read credentials")
@@ -314,7 +317,7 @@ func (c *Client) InitSession(ctx context.Context) (Credentials, error) {
 		if err := c.credentialsCache.Init(creds.Hash()); err != nil {
 			log.Err(err).Msg("failed to cache credentials")
 		}
-		return c.RecycleSession(ctx, creds.SessionToken)
+		return c.recycleSession(ctx, creds.SessionToken)
 	}
 	return Credentials{}, fmt.Errorf("no credentials provided")
 }
@@ -504,8 +507,8 @@ func (c *Client) fetchCSRF(ctx context.Context) error {
 	return nil
 }
 
-// RecycleSession will login with the given sessionToken.
-func (c *Client) RecycleSession(
+// recycleSession will login with the given sessionToken.
+func (c *Client) recycleSession(
 	ctx context.Context,
 	sessionToken string,
 ) (Credentials, error) {
