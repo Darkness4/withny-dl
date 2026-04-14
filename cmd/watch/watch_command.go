@@ -263,7 +263,7 @@ func handleConfig(ctx context.Context, version string, config *Config) error {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 	go func() {
-		if err := client.LoginLoop(ctx); err != nil {
+		if err := client.RefreshSessionLoop(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Info().Msg("abort login")
 				return

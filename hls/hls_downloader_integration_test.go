@@ -105,7 +105,7 @@ func (suite *DownloaderIntegrationTestSuite) BeforeTest(suiteName, testName stri
 		secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
 		api.WithClearCredentialCacheOnFailureAfter(5),
 	)
-	err = suite.client.Login(context.Background())
+	err = suite.client.RefreshSession(context.Background())
 	suite.Require().NoError(err)
 
 	// Fetch playlist

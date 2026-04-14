@@ -53,10 +53,7 @@ type CredentialsFromEnv struct{}
 // Read returns the email and password from the environment.
 func (CredentialsFromEnv) Read() (api.SavedCredentials, error) {
 	return api.SavedCredentials{
-		Username:     os.Getenv("WITHNY_USERNAME"),
-		Password:     os.Getenv("WITHNY_PASSWORD"),
-		Token:        os.Getenv("WITHNY_ACCESS_TOKEN"),
-		RefreshToken: os.Getenv("WITHNY_REFRESH_TOKEN"),
+		SessionToken: os.Getenv("WITHNY_SESSION_TOKEN"),
 	}, nil
 }
 

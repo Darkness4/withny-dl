@@ -4,13 +4,8 @@
 ## Example of content:
 ##
 ## ```yaml
-## # User/Password-based
-## username: admin
-## password: password
-##
-## # Token-based
-## token: "ey..."
-## refreshToken: "abc..."
+## # Session-token (fetch from a cookie "__Secure-next-auth.session-token")
+## sessionToken: "ey..."
 ## ```
 ##
 credentialsFile: 'credentials.yaml'

@@ -14,18 +14,13 @@ var (
 	fixtureChannelHTML string
 )
 
-func TestFindGraphQLEndpointAndStreamUUID(t *testing.T) {
-	endpoint, suuid, err := findGraphQLEndpointAndStreamUUID(strings.NewReader(fixtureChannelHTML))
+func TestFindStreamUUID(t *testing.T) {
+	suuid, err := findStreamUUID(strings.NewReader(fixtureChannelHTML))
 
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		"https://77fkxz2qsvclbkkbvzxjt2jley.appsync-api.ap-northeast-1.amazonaws.com/graphql",
-		endpoint,
-	)
-	require.Equal(
-		t,
-		"4176f168-a4ed-49e3-8b55-13d50fbfb6f2",
+		"946b6d3b-05d1-481f-a053-180f592be1ad",
 		suuid,
 	)
 }

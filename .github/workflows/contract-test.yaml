@@ -81,8 +81,7 @@ jobs:
 
       - name: test
         env:
-          WITHNY_ACCESS_TOKEN: ${{ secrets.WITHNY_ACCESS_TOKEN }}
-          WITHNY_REFRESH_TOKEN: ${{ secrets.WITHNY_REFRESH_TOKEN }}
+          WITHNY_SESSION_TOKEN: ${{ secrets.WITHNY_SESSION_TOKEN }}
         run: go test -v -tags=contract -timeout=30s github.com/Darkness4/withny-dl/withny/api
 
       - name: Save secret
@@ -92,7 +91,6 @@ jobs:
           WITHNY_ETCD_USER: ${{ secrets.WITHNY_ETCD_USER }}
           WITHNY_ETCD_PASSWORD: ${{ secrets.WITHNY_ETCD_PASSWORD }}
           WITHNY_ETCD_ADDRESS: ${{ secrets.WITHNY_ETCD_ADDRESS }}
-          WITHNY_CACHED_TOKEN: ${{ secrets.WITHNY_CACHED_TOKEN }}
         run: |
           base64 /tmp/withny-dl-test.json > /tmp/withny-dl-test.b64.json
           ETCDCTL="/tmp/etcdctl --user=${WITHNY_ETCD_USER} --password=${WITHNY_ETCD_PASSWORD} --endpoints=${WITHNY_ETCD_ADDRESS} --cacert=/tmp/secrets/ca.crt --cert=/tmp/secrets/tls.crt --key=/tmp/secrets/tls.key"

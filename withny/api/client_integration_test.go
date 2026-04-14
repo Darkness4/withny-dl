@@ -62,9 +62,9 @@ func TestClient(t *testing.T) {
 	)
 	passCode := ""
 
-	t.Run("Login", func(t *testing.T) {
+	t.Run("RefreshSession", func(t *testing.T) {
 		// Act
-		err = client.Login(context.Background())
+		err = client.RefreshSession(context.Background())
 
 		// Assert
 		require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestClient(t *testing.T) {
 		// Act
 		const fixture = "admin"
 		const expectedUUID = "b4fa8557-7423-4fde-aec0-54775cea6f74"
-		err := client.Login(context.Background())
+		err := client.RefreshSession(context.Background())
 		require.NoError(t, err)
 
 		user, err := client.GetUser(context.Background(), fixture)
@@ -92,7 +92,7 @@ func TestClient(t *testing.T) {
 	t.Run("Get streams", func(t *testing.T) {
 		// Act
 		username := findAnyLiveStream(t, client, passCode)
-		err := client.Login(context.Background())
+		err := client.RefreshSession(context.Background())
 		require.NoError(t, err)
 
 		streams, err := client.GetStreams(context.Background(), username, passCode)
@@ -103,7 +103,7 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("Get stream playback URL", func(t *testing.T) {
-		err := client.Login(context.Background())
+		err := client.RefreshSession(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -123,7 +123,7 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("Get playlists", func(t *testing.T) {
-		err := client.Login(context.Background())
+		err := client.RefreshSession(context.Background())
 		require.NoError(t, err)
 
 		// Act

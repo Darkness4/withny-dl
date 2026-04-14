@@ -153,10 +153,7 @@ Minimal configuration:
 ```yaml
 # credentials.yaml
 # See below for more details.
-token: 'ey...'
-refreshToken: 'abc...'
-## Login by username and password is obsolete and will no longer be supported
-## due to Withny added captcha.
+sessionToken: 'ey...'
 ```
 
 ```yaml
@@ -202,8 +199,7 @@ channels:
 ## Example of content:
 ##
 ## ```yaml
-## token: "ey..."
-## refreshToken: "abc..."
+## sessionToken: "ey..."
 ## ```
 ##
 credentialsFile: 'credentials.yaml'
@@ -484,17 +480,14 @@ The [config.yaml](config.yaml) file already includes a documentation for each fi
 
 Because withny offers SSO, no password can be used to login. Instead, a token must be used. The token can be obtained in your browser by fetching the cookies:
 
-- `auth._refresh_token.local` (A 20-character string)
-- `auth._token.local` **without Bearer** (A JWT token, starting with `ey...`)
+- `__Secure-next-auth.session-token` (A JSON Web Ecryption Token `eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0ge...`)
 
 You can fetch these cookies by opening the [inspector tools](https://developer.chrome.com/docs/devtools/application/cookies) (Application tab):
 
-![image-20250309150814029](./README.assets/image-20250309150814029.png)
-
 Now, let's talk about limitations:
 
-- The refresh token can **only** be used once. After that, the API will return an Unauthorized error. This means that the refresh token in the `credentials.yaml` file should be updated the moment you get an unauthorized error.
-- Obviously, this is not optimal, so **withny-dl will do it for you and cache it in the directory specified by `cachedCredentialsFile`** file (with the right permissions). The cache is invalidated if the refresh token fails or is used. If it is invalidated, it will fallback to the `credentials.yaml` file. And if this fails too, the program will exit with an error. **The program will not be able to restart itself if the refresh token is invalid.**
+- The session token can **only** be used once. After that, the API will return an Unauthorized error. This means that the session token in the `credentials.yaml` file should be updated the moment you get an unauthorized error.
+- Obviously, this is not optimal, so **withny-dl will do it for you and cache it in the directory specified by `cachedCredentialsFile`** file (with the right permissions). The cache is invalidated if the session token fails or is used. If it is invalidated, it will fallback to the `credentials.yaml` file. And if this fails too, the program will exit with an error. **The program will not be able to restart itself if the session token is invalid.**
 
 Therefore, it is **extremely recommended to setup a notification channel to be notified when the program stops**. You can find availables channel at [shoutrrr](https://containrrr.dev/shoutrrr/v0.8/services/discord/).
 

@@ -28,14 +28,13 @@ func DownloadChat(ctx context.Context, scraper api.Scraper, chat Chat) error {
 	))
 	defer span.End()
 
-	endpoint, suuid, err := scraper.
-		FetchCommentsGraphQLAndStreamUUID(ctx, chat.ChannelID, chat.PassCode)
+	suuid, err := scraper.FetchStreamUUID(ctx, chat.ChannelID, chat.PassCode)
 	if err != nil {
 		log.Err(err).Msg("failed to find graphql endpoint for chat")
 		return err
 	}
 
-	ws := api.NewCommentWebSocket(scraper.Client, endpoint)
+	ws := api.NewCommentWebSocket(scraper.Client)
 	conn, err := ws.Dial(ctx)
 	if err != nil {
 		log.Err(err).Msg("failed to dial websocket")

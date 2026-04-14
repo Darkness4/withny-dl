@@ -146,6 +146,12 @@ func (f *FileCache) Get() (api.CachedCredentials, error) {
 //
 // To avoid erasing the credentials file, it will reads the current credentials and merge the new credentials.
 func (f *FileCache) Set(creds api.Credentials) error {
+	if creds.AccessToken == "" {
+		panic("Set was called when accesstoken was empty! Call the developer!")
+	}
+	if creds.SessionToken == "" {
+		panic("Set was called when sessiontoken was empty! Call the developer!")
+	}
 	current, err := f.Get()
 	if err != nil {
 		return err
@@ -157,9 +163,8 @@ func (f *FileCache) Set(creds api.Credentials) error {
 	}
 	defer file.Close()
 
-	// Remove password-based login, caching is only allowed after login.
-	current.Token = creds.Token
-	current.RefreshToken = creds.RefreshToken
+	current.SessionToken = creds.SessionToken
+	current.AccessToken = creds.AccessToken
 
 	// Encrypt the JSON data and write it to the writer
 	decrypted, err := json.Marshal(current)
@@ -170,8 +175,10 @@ func (f *FileCache) Set(creds api.Credentials) error {
 	return Encrypt(file, hardcodedSecret, decrypted)
 }
 
-// Init writes the credentials to a file, but store the hash of the credentials.
-func (f *FileCache) Init(creds api.Credentials, hash string) error {
+// Init store the hash of the original credentials.
+//
+// This is used for invalidation in case the user changes the origianl credentials.
+func (f *FileCache) Init(hash string) error {
 	file, err := os.OpenFile(f.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -179,7 +186,7 @@ func (f *FileCache) Init(creds api.Credentials, hash string) error {
 	defer file.Close()
 
 	cached := api.CachedCredentials{
-		Credentials: creds,
+		Credentials: api.Credentials{},
 		Hash:        hash,
 	}
 

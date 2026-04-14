@@ -30,13 +30,13 @@ func TestSessionWebSocket(t *testing.T) {
 		api.WithClearCredentialCacheOnFailureAfter(5),
 	)
 	scraper := api.Scraper{client}
-	_, suuid, err := scraper.FetchCommentsGraphQLAndStreamUUID(context.Background(), "admin", "")
+	suuid, err := scraper.FetchStreamUUID(context.Background(), "admin", "")
 	require.NoError(t, err)
 	ws := api.NewSessionWebSocket(client, suuid, "")
 
 	t.Run("Watch", func(t *testing.T) {
 		ctx := context.Background()
-		err := client.Login(ctx)
+		err := client.RefreshSession(ctx)
 		require.NoError(t, err)
 
 		conn, err := ws.Dial(ctx)

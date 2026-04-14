@@ -290,7 +290,7 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 		api.NewClient(
 			suite.server.Client(),
 			secret.CredentialsFromEnv{},
-			secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
+			secret.NewMockCache(),
 			api.WithClearCredentialCacheOnFailureAfter(5),
 		),
 		suite.server.URL,
@@ -326,7 +326,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -363,7 +363,7 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -391,7 +391,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -429,7 +429,7 @@ func (suite *DownloaderTestSuite) TestDownload() {
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -503,7 +503,7 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 		api.NewClient(
 			suite.server.Client(),
 			secret.CredentialsFromEnv{},
-			secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret"),
+			secret.NewMockCache(),
 			api.WithClearCredentialCacheOnFailureAfter(5),
 		),
 		suite.server.URL,

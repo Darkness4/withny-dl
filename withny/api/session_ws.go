@@ -63,7 +63,7 @@ func (w *SessionWebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 	}
 	q := w.url.Query()
 	q.Set("uuid", w.streamUUID)
-	q.Set("token", creds.Token)
+	q.Set("token", creds.AccessToken)
 	q.Set("passCode", w.passCode)
 	q.Set("EIO", "4")
 	q.Set("transport", "websocket")
