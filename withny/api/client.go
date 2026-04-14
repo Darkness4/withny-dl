@@ -2,7 +2,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -22,8 +21,8 @@ import (
 
 const (
 	apiURL              = "https://www.withny.fun/api"
-	loginURL            = apiURL + "/auth/login"
-	refreshURL          = apiURL + "/auth/token"
+	sessionURL          = apiURL + "/auth/session"
+	csrfURL             = apiURL + "/auth/csrf"
 	userURL             = apiURL + "/user"
 	streamsURL          = apiURL + "/streams"
 	streamsWithRoomsURL = apiURL + "/streams/with-rooms"
@@ -83,15 +82,13 @@ type Claims struct {
 
 // Credentials is the credentials for the withny API.
 type Credentials struct {
-	LoginResponse
+	SessionToken string
+	AccessToken  string
 }
 
 // SavedCredentials is the saved credentials given by the user for the withny API.
 type SavedCredentials struct {
-	Username     string `yaml:"username"     json:"username"`
-	Password     string `yaml:"password"     json:"password"`
-	Token        string `yaml:"token"        json:"token"`
-	RefreshToken string `yaml:"refreshToken" json:"refreshToken"`
+	SessionToken string `yaml:"sessionToken" json:"sessionToken"`
 }
 
 // Hash returns the hash of the credentials.
@@ -117,7 +114,7 @@ type CredentialsCache interface {
 	// Set writes the credentials to a file.
 	Set(creds Credentials) error
 	// Set writes the credentials to a file, but store the hash of the credentials.
-	Init(creds Credentials, hash string) error
+	Init(hash string) error
 	// Get reads the credentials from a file.
 	Get() (CachedCredentials, error)
 	// Invalidate removes the credentials file.
@@ -221,14 +218,17 @@ func (c *Client) NewAuthRequestWithContext(
 	creds, err := c.credentialsCache.Get()
 	if err != nil {
 		log.Err(err).Msg("failed to get cached credentials")
+		return nil, fmt.Errorf("failed to get cached credentials: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+creds.Token)
+	req.Header.Set("Authorization", "Bearer "+creds.AccessToken)
 	req.Header.Set("User-Agent", c.userAgent)
 	return req, nil
 }
 
-// Login will login to withny and store the credentials in the client.
-func (c *Client) Login(ctx context.Context) (err error) {
+// RefreshSession will refresh the session token and cache new credentials.
+//
+// It is **important** to call this function before making any authenticated requests.
+func (c *Client) RefreshSession(ctx context.Context) (err error) {
 	var creds Credentials
 
 	// Check if cache is valid
@@ -251,10 +251,10 @@ func (c *Client) Login(ctx context.Context) (err error) {
 	}
 
 	switch {
-	case cachedCreds.Token != "":
+	case cachedCreds.SessionToken != "":
 		tries := 0
 		for {
-			creds, err = c.LoginWithRefreshToken(ctx, cachedCreds.RefreshToken)
+			creds, err = c.RecycleSession(ctx, cachedCreds.SessionToken)
 			if err != nil {
 				var apiErr HTTPError
 				if errors.As(err, &apiErr) {
@@ -285,12 +285,12 @@ func (c *Client) Login(ctx context.Context) (err error) {
 				if err := c.credentialsCache.Invalidate(); err != nil {
 					log.Err(err).Msg("failed to invalidate cache")
 				}
-				creds, err = c.loginWithReader(ctx)
+				creds, err = c.InitSession(ctx)
 			}
 			break
 		}
 	default:
-		creds, err = c.loginWithReader(ctx)
+		creds, err = c.InitSession(ctx)
 	}
 	if err != nil {
 		log.Err(err).Msg("failed to login")
@@ -304,34 +304,17 @@ func (c *Client) Login(ctx context.Context) (err error) {
 	return nil
 }
 
-func (c *Client) loginWithReader(ctx context.Context) (Credentials, error) {
+func (c *Client) InitSession(ctx context.Context) (Credentials, error) {
 	creds, err := c.credentialsReader.Read()
 	if err != nil {
 		log.Err(err).Msg("failed to read credentials")
 		return Credentials{}, err
 	}
-	if creds.Username != "" {
-		resp, err := c.LoginWithUserPassword(ctx, creds.Username, creds.Password)
-		if err != nil {
-			return Credentials{}, err
-		}
-		if err := c.credentialsCache.Init(resp, creds.Hash()); err != nil {
+	if creds.SessionToken != "" {
+		if err := c.credentialsCache.Init(creds.Hash()); err != nil {
 			log.Err(err).Msg("failed to cache credentials")
 		}
-		return resp, err
-	} else if creds.Token != "" {
-		// Hijack the client token to override authorization header
-		newCredentials := Credentials{
-			LoginResponse: LoginResponse{
-				Token:        creds.Token,
-				RefreshToken: creds.RefreshToken,
-				TokenType:    "Bearer",
-			},
-		}
-		if err := c.credentialsCache.Init(newCredentials, creds.Hash()); err != nil {
-			log.Err(err).Msg("failed to cache credentials")
-		}
-		return c.LoginWithRefreshToken(ctx, creds.RefreshToken)
+		return c.RecycleSession(ctx, creds.SessionToken)
 	}
 	return Credentials{}, fmt.Errorf("no credentials provided")
 }
@@ -490,33 +473,64 @@ func (c *Client) GetStreams(
 	return parsed, err
 }
 
-// LoginWithRefreshToken will login with the given refreshToken.
-func (c *Client) LoginWithRefreshToken(
-	ctx context.Context,
-	refreshToken string,
-) (Credentials, error) {
-	log.Info().Msg("refreshing token")
-	buf := new(bytes.Buffer)
-	if err := json.NewEncoder(buf).Encode(map[string]string{
-		"refreshToken": refreshToken,
-	}); err != nil {
-		panic(err)
-	}
-
-	req, err := c.NewAuthRequestWithContext(
+// fetchCSRF fetches the CSRF value.
+func (c *Client) fetchCSRF(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(
 		ctx,
-		http.MethodPost,
-		refreshURL,
-		buf,
+		http.MethodGet,
+		csrfURL,
+		nil,
 	)
 	if err != nil {
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	// Check the response
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	// Uses the cookie jar for further request.
+
+	return nil
+}
+
+// RecycleSession will login with the given sessionToken.
+func (c *Client) RecycleSession(
+	ctx context.Context,
+	sessionToken string,
+) (Credentials, error) {
+	log.Info().Msg("refreshing session")
+
+	if err := c.fetchCSRF(ctx); err != nil {
+		return Credentials{}, fmt.Errorf("failed to fetch CSRF: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		sessionURL,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Add("Cookie", "__Secure-next-auth.session-token="+sessionToken)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", c.userAgent)
 
 	log := log.With().
-		Str("method", "POST").
-		Str("url", refreshURL).
+		Str("method", "GET").
+		Str("url", sessionURL).
 		Logger()
 
 	res, err := c.Do(req)
@@ -537,14 +551,14 @@ func (c *Client) LoginWithRefreshToken(
 			log.Err(err).
 				Str("response", string(body)).
 				Int("status", res.StatusCode).
-				Str("refreshToken", refreshToken).
+				Str("sessionToken", sessionToken).
 				Msg("unexpected status code (refresh token is already used?)")
 		}
 		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
 		log.Err(err).
 			Str("response", string(body)).
 			Int("status", res.StatusCode).
-			Str("refreshToken", refreshToken).
+			Str("sessionToken", sessionToken).
 			Msg("unexpected status code")
 		if res.StatusCode >= http.StatusInternalServerError {
 			return Credentials{}, HTTPError{
@@ -560,9 +574,8 @@ func (c *Client) LoginWithRefreshToken(
 	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
 		return Credentials{}, err
 	}
-
-	var lr Credentials
-	if err := json.Unmarshal(body, &lr); err != nil {
+	var sr SessionResponse
+	if err := json.Unmarshal(body, &sr); err != nil {
 		log.Err(err).
 			Str("raw_message", string(body)).
 			Msg("failed to decode JSON")
@@ -571,92 +584,25 @@ func (c *Client) LoginWithRefreshToken(
 			err,
 		)
 	}
-	var claims Claims
-	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &claims)
-	return lr, err
-}
 
-// LoginWithUserPassword will login with the given email and password.
-func (c *Client) LoginWithUserPassword(
-	ctx context.Context,
-	username, password string,
-) (Credentials, error) {
-	log.Warn().
-		Msg("login with user password is deprecated, and will not work since withny has a captcha, please login with refresh token instead")
-
-	log.Info().Str("username", username).Msg("logging in")
-	buf := new(bytes.Buffer)
-	if err := json.NewEncoder(buf).Encode(map[string]string{
-		"email":    username, // email can also be the username
-		"password": password,
-	}); err != nil {
-		panic(err)
-	}
-
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		loginURL,
-		buf,
-	)
-	if err != nil {
-		panic(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", c.userAgent)
-
-	log := log.With().
-		Str("method", "POST").
-		Str("url", loginURL).
-		Logger()
-
-	res, err := c.Do(req)
-	if err != nil {
-		log.Err(err).Msg("failed to login")
-		return Credentials{}, err
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		log.Err(err).Msg("failed to read body")
-		return Credentials{}, err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		err := fmt.Errorf("unexpected status code: %d", res.StatusCode)
-		log.Err(err).
-			Str("response", string(body)).
-			Int("status", res.StatusCode).
-			Msg("unexpected status code")
-		if res.StatusCode >= http.StatusInternalServerError {
-			return Credentials{}, HTTPError{
-				Status: res.StatusCode,
-				Body:   string(body),
-				Method: req.Method,
-				URL:    req.URL.String(),
-			}
+	// Get new session token
+	var newSessionToken string
+	for _, cookie := range res.Cookies() {
+		if cookie.Name == "__Secure-next-auth.session-token" {
+			newSessionToken = cookie.Value
 		}
-		return Credentials{}, err
+	}
+	if newSessionToken == "" {
+		return Credentials{}, fmt.Errorf("no session token found")
 	}
 
-	if err := mapMaintenanceToHTTPError(req.URL.String(), req.Method, string(body)); err != nil {
-		return Credentials{}, err
-	}
-
-	var lr Credentials
-	if err := json.Unmarshal(body, &lr); err != nil {
-		log.Err(err).
-			Str("raw_message", string(body)).
-			Msg("failed to decode JSON")
-		return Credentials{}, fmt.Errorf(
-			"failed to decode login (with user password) response: %w",
-			err,
-		)
-	}
+	// Validate
 	var claims Claims
-	_, _, err = jwt.NewParser().ParseUnverified(lr.Token, &claims)
-	return lr, err
+	_, _, err = jwt.NewParser().ParseUnverified(sr.AccessToken, &claims)
+	return Credentials{
+		AccessToken:  sr.AccessToken,
+		SessionToken: newSessionToken,
+	}, err
 }
 
 // GetStreamPlaybackURL will fetch the playback URL for the given streamID.
@@ -849,9 +795,9 @@ func (c *Client) GetPlaylists(
 	return ParseM3U8(respBody), nil
 }
 
-// LoginLoop will login to withny and refresh the token when needed.
-func (c *Client) LoginLoop(ctx context.Context) error {
-	if err := c.Login(ctx); err != nil {
+// RefreshSessionLoop will login to withny and refresh the token when needed.
+func (c *Client) RefreshSessionLoop(ctx context.Context) error {
+	if err := c.RefreshSession(ctx); err != nil {
 		log.Err(err).Msg("failed to login to withny")
 		return err
 	}
@@ -862,7 +808,7 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 	}
 	var claims Claims
 	parser := jwt.NewParser()
-	_, _, err = parser.ParseUnverified(creds.Token, &claims)
+	_, _, err = parser.ParseUnverified(creds.AccessToken, &claims)
 	if err != nil {
 		log.Err(err).Msg("token cannot be parsed")
 		return err
@@ -892,18 +838,18 @@ func (c *Client) LoginLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			log.Err(ctx.Err()).
 				AnErr("cause", context.Cause(ctx)).
-				Msg("context canceled, stopping login loop")
+				Msg("context canceled, stopping refresh session loop")
 			return ctx.Err()
 		case <-ticker.C:
-			if err := c.Login(ctx); err != nil {
-				log.Err(err).Msg("failed to login to withny, stopping login loop")
+			if err := c.RefreshSession(ctx); err != nil {
+				log.Err(err).Msg("failed to refresh session to withny, stopping refresh session loop")
 				return err
 			}
 			creds, err := c.credentialsCache.Get()
 			if err != nil {
 				log.Err(err).Msg("failed to get cached credentials")
 			}
-			_, _, err = parser.ParseUnverified(creds.Token, &claims)
+			_, _, err = parser.ParseUnverified(creds.AccessToken, &claims)
 			if err != nil {
 				log.Err(err).Msg("token cannot be parsed")
 				return err

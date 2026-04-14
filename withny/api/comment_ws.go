@@ -87,7 +87,7 @@ func (w *CommentWebSocket) Dial(ctx context.Context) (*websocket.Conn, error) {
 		log.Err(err).Msg("failed to get cached credentials")
 	}
 	v := map[string]string{
-		"Authorization": "Bearer " + creds.Token,
+		"Authorization": "Bearer " + creds.AccessToken,
 		"Host":          w.url.Host,
 	}
 	vjson, err := json.Marshal(v)
@@ -241,7 +241,7 @@ func (w *CommentWebSocket) Subscribe(
 		Data: string(jsonQuery),
 		Extensions: map[string]any{
 			"authorization": map[string]string{
-				"Authorization": creds.TokenType + " " + creds.Token,
+				"Authorization": "Bearer " + creds.AccessToken,
 				"host":          w.url.Host,
 			},
 		},

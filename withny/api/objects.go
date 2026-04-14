@@ -11,11 +11,9 @@ type MetaData struct {
 	Stream GetStreamsResponseElement
 }
 
-// LoginResponse is the response of the login request.
-type LoginResponse struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refreshToken"`
-	TokenType    string `json:"tokenType"`
+// SessionResponse is the response of the session request.
+type SessionResponse struct {
+	AccessToken string `json:"accessToken"`
 }
 
 // GetUserResponse is the response of the get user request.

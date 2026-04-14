@@ -40,7 +40,7 @@ func TestCommentWebSocket(t *testing.T) {
 
 	t.Run("WatchComments", func(t *testing.T) {
 		ctx := context.Background()
-		err := client.Login(ctx)
+		err := client.RefreshSession(ctx)
 		require.NoError(t, err)
 
 		conn, err := ws.Dial(ctx)
