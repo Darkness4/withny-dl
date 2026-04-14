@@ -37,6 +37,11 @@ const queryFormat = `subscription MySubscription {
 	}
 }`
 
+// GraphQLEndpoint is the graphql endpoint for the withny chat.
+//
+// It is hardcoded here, but it can be found in the Next.JS static assets.
+const GraphQLEndpoint = "https://77fkxz2qsvclbkkbvzxjt2jley.appsync-api.ap-northeast-1.amazonaws.com/graphql"
+
 // CommentWebSocket is used to interact with the withny CommentWebSocket.
 type CommentWebSocket struct {
 	*Client
@@ -54,13 +59,12 @@ type CommentWSResponse struct {
 // NewCommentWebSocket creates a new WebSocket.
 func NewCommentWebSocket(
 	client *Client,
-	url string,
 ) *CommentWebSocket {
-	u, err := neturl.Parse(url)
+	u, err := neturl.Parse(GraphQLEndpoint)
 	if err != nil {
 		panic(err)
 	}
-	rtURL, err := neturl.Parse(strings.Replace(url, "appsync-api", "appsync-realtime-api", 1))
+	rtURL, err := neturl.Parse(strings.Replace(GraphQLEndpoint, "appsync-api", "appsync-realtime-api", 1))
 	if err != nil {
 		panic(err)
 	}

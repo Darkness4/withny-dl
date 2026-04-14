@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
 	"testing"
 	"time"
 
@@ -30,17 +29,14 @@ func TestScraper(t *testing.T) {
 	)
 	scraper := api.Scraper{client}
 
-	t.Run("FindGraphQLAndStreamUUID", func(t *testing.T) {
-		out, suuid, err := scraper.FetchCommentsGraphQLAndStreamUUID(
+	t.Run("FetchStreamUUID", func(t *testing.T) {
+		suuid, err := scraper.FetchStreamUUID(
 			context.Background(),
 			"admin",
 			"",
 		)
 		require.NoError(t, err)
-		require.NotEmpty(t, out)
-		fmt.Println(out, suuid)
-		_, err = url.Parse(out)
-		require.NoError(t, err)
+		fmt.Println("Stream UUID:", suuid)
 		require.NotEmpty(t, suuid)
 	})
 }

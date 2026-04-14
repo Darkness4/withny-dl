@@ -30,13 +30,13 @@ func TestCommentWebSocket(t *testing.T) {
 		api.WithClearCredentialCacheOnFailureAfter(5),
 	)
 	scraper := api.Scraper{client}
-	wsURL, suuid, err := scraper.FetchCommentsGraphQLAndStreamUUID(
+	suuid, err := scraper.FetchStreamUUID(
 		context.Background(),
 		"admin",
 		"",
 	)
 	require.NoError(t, err)
-	ws := api.NewCommentWebSocket(client, wsURL)
+	ws := api.NewCommentWebSocket(client)
 
 	t.Run("WatchComments", func(t *testing.T) {
 		ctx := context.Background()
