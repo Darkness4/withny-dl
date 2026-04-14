@@ -286,14 +286,11 @@ func (suite *DownloaderTestSuite) BeforeTest(_, _ string) {
 			}
 		}),
 	)
-	cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-	_ = cache.Init("dummy")
-	_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 	suite.impl = NewDownloader(
 		api.NewClient(
 			suite.server.Client(),
 			secret.CredentialsFromEnv{},
-			cache,
+			secret.NewMockCache(),
 			api.WithClearCredentialCacheOnFailureAfter(5),
 		),
 		suite.server.URL,
@@ -325,14 +322,11 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 				res.WriteHeader(http.StatusInternalServerError)
 			}),
 		)
-		cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-		_ = cache.Init("dummy")
-		_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				cache,
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -365,14 +359,11 @@ func (suite *DownloaderTestSuite) TestGetFragmentURLsRetry() {
 				suite.counter++
 			}),
 		)
-		cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-		_ = cache.Init("dummy")
-		_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				cache,
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -396,14 +387,11 @@ func (suite *DownloaderTestSuite) TestDownload() {
 				res.WriteHeader(http.StatusInternalServerError)
 			}),
 		)
-		cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-		_ = cache.Init("dummy")
-		_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				cache,
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -437,14 +425,11 @@ func (suite *DownloaderTestSuite) TestDownload() {
 				suite.counter++
 			}),
 		)
-		cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-		_ = cache.Init("dummy")
-		_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 		suite.impl = NewDownloader(
 			api.NewClient(
 				suite.server.Client(),
 				secret.CredentialsFromEnv{},
-				cache,
+				secret.NewMockCache(),
 				api.WithClearCredentialCacheOnFailureAfter(5),
 			),
 			suite.server.URL,
@@ -514,14 +499,11 @@ func (suite *DownloaderTestSuiteNoTS) BeforeTest(_, _ string) {
 			}
 		}),
 	)
-	cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-	_ = cache.Init("dummy")
-	_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 	suite.impl = NewDownloader(
 		api.NewClient(
 			suite.server.Client(),
 			secret.CredentialsFromEnv{},
-			cache,
+			secret.NewMockCache(),
 			api.WithClearCredentialCacheOnFailureAfter(5),
 		),
 		suite.server.URL,

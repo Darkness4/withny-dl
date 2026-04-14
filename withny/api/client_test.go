@@ -21,13 +21,10 @@ func TestGetPlaylistsRetry(t *testing.T) {
 				res.WriteHeader(http.StatusInternalServerError)
 			}),
 		)
-		cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-		_ = cache.Init("dummy")
-		_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 		impl := api.NewClient(
 			server.Client(),
 			secret.CredentialsFromEnv{},
-			cache,
+			secret.NewMockCache(),
 			api.WithClearCredentialCacheOnFailureAfter(5),
 		)
 
@@ -57,13 +54,10 @@ func TestGetPlaylistsRetry(t *testing.T) {
 				counter++
 			}),
 		)
-		cache := secret.NewFileCache("/tmp/withny-dl-test.json", "withny-dl-test-secret")
-		_ = cache.Init("dummy")
-		_ = cache.Set(api.Credentials{SessionToken: "dummy", AccessToken: "dummy"})
 		impl := api.NewClient(
 			server.Client(),
 			secret.CredentialsFromEnv{},
-			cache,
+			secret.NewMockCache(),
 			api.WithClearCredentialCacheOnFailureAfter(5),
 		)
 
