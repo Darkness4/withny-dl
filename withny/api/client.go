@@ -237,7 +237,7 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 	// Check if cache is valid
 	cachedCreds, err := c.credentialsCache.Get()
 	if err != nil {
-		log.Err(err).Msg("failed to get cached credentials")
+		log.Warn().Err(err).Msg("failed to get cached credentials")
 	}
 	original, err := c.credentialsReader.Read()
 	if err != nil {
@@ -248,7 +248,7 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 		log.Info().Msg("credentials changed, clearing cache")
 		err := c.credentialsCache.Invalidate()
 		if err != nil {
-			log.Err(err).Msg("failed to invalidate cache")
+			log.Warn().Err(err).Msg("failed to invalidate cache, skipping...")
 		}
 		cachedCreds = CachedCredentials{}
 	}
@@ -308,6 +308,7 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 }
 
 func (c *Client) initSession(ctx context.Context) (Credentials, error) {
+	log.Info().Msg("initial login")
 	creds, err := c.credentialsReader.Read()
 	if err != nil {
 		log.Err(err).Msg("failed to read credentials")
@@ -599,6 +600,10 @@ func (c *Client) recycleSession(
 		return Credentials{}, fmt.Errorf("no session token found")
 	}
 
+	if sr.AccessToken == "" {
+		return Credentials{}, fmt.Errorf("no access token found, session token is invalid, please fetch a new one from your browser cookies")
+	}
+
 	// Validate
 	var claims Claims
 	_, _, err = jwt.NewParser().ParseUnverified(sr.AccessToken, &claims)
@@ -799,39 +804,9 @@ func (c *Client) GetPlaylists(
 }
 
 // RefreshSessionLoop will login to withny and refresh the token when needed.
-func (c *Client) RefreshSessionLoop(ctx context.Context) error {
-	if err := c.RefreshSession(ctx); err != nil {
-		log.Err(err).Msg("failed to login to withny")
-		return err
-	}
-
-	creds, err := c.credentialsCache.Get()
-	if err != nil {
-		log.Err(err).Msg("failed to get cached credentials")
-	}
+func (c *Client) RefreshSessionLoop(ctx context.Context, refreshDuration time.Duration) error {
 	var claims Claims
 	parser := jwt.NewParser()
-	_, _, err = parser.ParseUnverified(creds.AccessToken, &claims)
-	if err != nil {
-		log.Err(err).Msg("token cannot be parsed")
-		return err
-	}
-
-	date, err := claims.GetExpirationTime()
-	if err != nil {
-		panic(err)
-	}
-	var refreshDuration time.Duration
-	if date == nil {
-		// Refresh in 5 minutes
-		refreshDuration = 5 * time.Minute
-	} else {
-		// Refresh token 5 minutes before it expires
-		refreshDuration = time.Until(date.Add(-5 * time.Minute))
-	}
-	log.Debug().
-		Time("refresh_at", time.Now().Add(refreshDuration)).
-		Msg("next refresh scheduled")
 
 	ticker := time.NewTicker(refreshDuration)
 	defer ticker.Stop()
