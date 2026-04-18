@@ -221,7 +221,9 @@ func (c *Client) NewAuthRequestWithContext(
 		return nil, fmt.Errorf("failed to get cached credentials: %w", err)
 	}
 	if creds.AccessToken == "" {
-		panic("NewAuthRequestWithContext was called when accesstoken was empty! Call the developer!")
+		panic(
+			"NewAuthRequestWithContext was called when accesstoken was empty! Call the developer!",
+		)
 	}
 	req.Header.Set("Authorization", "Bearer "+creds.AccessToken)
 	req.Header.Set("User-Agent", c.userAgent)
@@ -601,7 +603,9 @@ func (c *Client) recycleSession(
 	}
 
 	if sr.AccessToken == "" {
-		return Credentials{}, fmt.Errorf("no access token found, session token is invalid, please fetch a new one from your browser cookies")
+		return Credentials{}, fmt.Errorf(
+			"no access token found, session token is invalid, please fetch a new one from your browser cookies",
+		)
 	}
 
 	// Validate
@@ -805,9 +809,6 @@ func (c *Client) GetPlaylists(
 
 // RefreshSessionLoop will login to withny and refresh the token when needed.
 func (c *Client) RefreshSessionLoop(ctx context.Context, refreshDuration time.Duration) error {
-	var claims Claims
-	parser := jwt.NewParser()
-
 	ticker := time.NewTicker(refreshDuration)
 	defer ticker.Stop()
 
@@ -820,30 +821,9 @@ func (c *Client) RefreshSessionLoop(ctx context.Context, refreshDuration time.Du
 			return ctx.Err()
 		case <-ticker.C:
 			if err := c.RefreshSession(ctx); err != nil {
-				log.Err(err).Msg("failed to refresh session to withny, stopping refresh session loop")
+				log.Err(err).
+					Msg("failed to refresh session to withny, stopping refresh session loop")
 				return err
-			}
-			creds, err := c.credentialsCache.Get()
-			if err != nil {
-				log.Err(err).Msg("failed to get cached credentials")
-			}
-			_, _, err = parser.ParseUnverified(creds.AccessToken, &claims)
-			if err != nil {
-				log.Err(err).Msg("token cannot be parsed")
-				return err
-			}
-			date, err := claims.GetExpirationTime()
-			if err != nil {
-				panic(err)
-			}
-			if date == nil {
-				log.Warn().
-					Msg("expiration date hasn't been found, refreshing in 5 minutes, this shouldn't happen when refreshing from cache")
-				// Refresh in 5 minutes
-				refreshDuration = 5 * time.Minute
-			} else {
-				// Refresh token 5 minutes before it expires
-				refreshDuration = time.Until(date.Add(-5 * time.Minute))
 			}
 			log.Debug().
 				Time("refresh_at", time.Now().Add(refreshDuration)).

@@ -18,7 +18,6 @@ import (
 
 	pprof "net/http/pprof"
 
-	"github.com/golang-jwt/jwt/v5"
 	godeltaprof "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -270,36 +269,12 @@ func handleConfig(ctx context.Context, version string, config *Config) error {
 		return err
 	}
 
-	creds, err := cache.Get()
-	if err != nil {
-		log.Err(err).Msg("failed to get cached credentials")
-	}
-	var claims api.Claims
-	parser := jwt.NewParser()
-	_, _, err = parser.ParseUnverified(creds.AccessToken, &claims)
-	if err != nil {
-		log.Err(err).Msg("token cannot be parsed")
-		return err
-	}
-
-	date, err := claims.GetExpirationTime()
-	if err != nil {
-		panic(err)
-	}
-	var refreshDuration time.Duration
-	if date == nil {
-		// Refresh in 5 minutes
-		refreshDuration = 5 * time.Minute
-	} else {
-		// Refresh token 5 minutes before it expires
-		refreshDuration = time.Until(date.Add(-5 * time.Minute))
-	}
 	log.Debug().
-		Time("refresh_at", time.Now().Add(refreshDuration)).
+		Time("refresh_at", time.Now().Add(5*time.Minute)).
 		Msg("next refresh scheduled")
 
 	go func() {
-		if err := client.RefreshSessionLoop(ctx, refreshDuration); err != nil {
+		if err := client.RefreshSessionLoop(ctx, 5*time.Minute); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Info().Msg("abort login")
 				return
