@@ -27,14 +27,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Download build-essential
         run: |
           sudo apt update -y
           sudo apt install -y build-essential libavformat-dev libavcodec-dev libavutil-dev
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: 'go.mod'
           cache: false
@@ -45,7 +45,7 @@ jobs:
           go mod download
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
         with:
           version: latest
           args: --timeout 5m
@@ -56,14 +56,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Download build-essential
         run: |
           sudo apt update -y
           sudo apt install -y build-essential libavformat-dev libavcodec-dev libavutil-dev
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: 'go.mod'
           cache: false
@@ -88,7 +88,7 @@ jobs:
     needs: [lint, test]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Docker Context for Buildx
         run: |
@@ -96,17 +96,17 @@ jobs:
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
         with:
           version: latest
           endpoint: builders
 
       - name: Install Cosign
         if: startsWith(github.ref, 'refs/tags')
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -117,14 +117,14 @@ jobs:
         run: echo "SAFE_BRANCH=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
 
       - id: docker_meta_dev
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         with:
           images: ghcr.io/darkness4/withny-dl
           tags: |
             ${{ github.ref_name == 'main' && 'dev' || format('dev--{0}', steps.sanitize.outputs.SAFE_BRANCH) }}
 
       - name: Build and export dev
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         id: build-and-push-dev
         with:
           file: Dockerfile.static
@@ -137,7 +137,7 @@ jobs:
           annotations: ${{ steps.docker_meta_dev.outputs.annotations }}
 
       - id: docker_meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         if: startsWith(github.ref, 'refs/tags')
         with:
           images: ghcr.io/darkness4/withny-dl
@@ -147,7 +147,7 @@ jobs:
 
       - name: Build and export
         if: startsWith(github.ref, 'refs/tags')
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         id: build-and-push
         with:
           file: Dockerfile.static
@@ -173,7 +173,7 @@ jobs:
 
       - name: Extract artifacts
         if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           file: Dockerfile.static
           platforms: linux/amd64,linux/arm64
@@ -193,7 +193,7 @@ jobs:
 
       - name: Upload artifacts
         if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: linux-binaries
           path: /tmp/artifacts
@@ -206,7 +206,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Docker Context for Buildx
         run: |
@@ -214,13 +214,13 @@ jobs:
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
         with:
           version: latest
           endpoint: builders
 
       - id: docker_meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         if: startsWith(github.ref, 'refs/tags')
         with:
           images: ghcr.io/darkness4/withny-dl
@@ -228,7 +228,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Build & Extract artifacts
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           file: Dockerfile.static-windows
           platforms: linux/amd64
@@ -245,7 +245,7 @@ jobs:
           mv /tmp/out/withny-dl-windows-amd64.exe /tmp/artifacts/withny-dl-windows-amd64.exe
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: windows-binaries
           path: /tmp/artifacts
@@ -258,7 +258,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Docker Context for Buildx
         run: |
@@ -266,13 +266,13 @@ jobs:
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
         with:
           version: latest
           endpoint: builders
 
       - id: docker_meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         if: startsWith(github.ref, 'refs/tags')
         with:
           images: ghcr.io/darkness4/withny-dl
@@ -280,7 +280,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Build & Extract artifacts
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           file: Dockerfile.darwin
           platforms: linux/amd64,linux/arm64
@@ -298,7 +298,7 @@ jobs:
           mv /tmp/out/linux_arm64/withny-dl-darwin-arm64 /tmp/artifacts/withny-dl-darwin-arm64
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: osx-binaries
           path: /tmp/artifacts
@@ -318,7 +318,7 @@ jobs:
     needs: [build-darwin]
 
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: osx-binaries
 
@@ -340,7 +340,7 @@ jobs:
     needs: [build-windows]
 
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: windows-binaries
 
@@ -354,7 +354,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Run memleak tests
         run: |
@@ -373,7 +373,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags')
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Fetch tag annotations
         run: |
@@ -381,19 +381,19 @@ jobs:
           git fetch --force --tags --depth 1
 
       - name: Download linux artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: linux-binaries
           path: target
 
       - name: Download windows artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: windows-binaries
           path: target
 
       - name: Download osx artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: osx-binaries
           path: target
@@ -407,7 +407,7 @@ jobs:
           echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           echo "TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${GITHUB_REF#refs/tags/})" >> $GITHUB_OUTPUT
 
-      - uses: sersoft-gmbh/setup-gh-cli-action@v3
+      - uses: sersoft-gmbh/setup-gh-cli-action@3cb41a4434ca35de4d1c16e00dc7e16d38409494 # v3
         if: startsWith(github.ref, 'refs/tags/cli')
         with:
           version: stable
