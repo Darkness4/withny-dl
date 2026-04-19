@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"golang.org/x/crypto/pbkdf2"
 
@@ -107,6 +108,7 @@ func Decrypt(r io.Reader, secret []byte) ([]byte, error) {
 type FileCache struct {
 	FilePath string
 	Secret   []byte
+	mu       sync.RWMutex
 }
 
 // NewFileCache creates a new file cache.
@@ -117,10 +119,8 @@ func NewFileCache(filePath string, secret string) *FileCache {
 	}
 }
 
-// Get reads the credentials from a file.
-func (f *FileCache) Get() (api.CachedCredentials, error) {
+func (f *FileCache) get() (api.CachedCredentials, error) {
 	var creds api.CachedCredentials
-
 	file, err := os.Open(f.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -138,8 +138,14 @@ func (f *FileCache) Get() (api.CachedCredentials, error) {
 	if err := json.Unmarshal(decrypted, &creds); err != nil {
 		return creds, err
 	}
-
 	return creds, nil
+}
+
+// Get reads the credentials from a file.
+func (f *FileCache) Get() (api.CachedCredentials, error) {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.get()
 }
 
 // Set writes the credentials to a file.
@@ -152,7 +158,10 @@ func (f *FileCache) Set(creds api.Credentials) error {
 	if creds.SessionToken == "" {
 		panic("Set was called when sessiontoken was empty! Call the developer!")
 	}
-	current, err := f.Get()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	current, err := f.get()
 	if err != nil {
 		return err
 	}
@@ -179,6 +188,8 @@ func (f *FileCache) Set(creds api.Credentials) error {
 //
 // This is used for invalidation in case the user changes the origianl credentials.
 func (f *FileCache) Init(hash string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	file, err := os.OpenFile(f.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -201,5 +212,7 @@ func (f *FileCache) Init(hash string) error {
 
 // Invalidate removes the credentials file.
 func (f *FileCache) Invalidate() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return os.Remove(f.FilePath)
 }
