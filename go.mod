@@ -10,7 +10,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.10
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-pointer v0.0.1
 	github.com/prometheus/client_golang v1.23.2
