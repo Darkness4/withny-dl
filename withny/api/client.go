@@ -261,8 +261,7 @@ func (c *Client) RefreshSession(ctx context.Context) (err error) {
 		for {
 			creds, err = c.recycleSession(ctx, cachedCreds.SessionToken)
 			if err != nil {
-				var apiErr HTTPError
-				if errors.As(err, &apiErr) {
+				if apiErr, ok := errors.AsType[HTTPError](err); ok {
 					if apiErr.Status == http.StatusServiceUnavailable ||
 						apiErr.Status == http.StatusGatewayTimeout ||
 						apiErr.Status == http.StatusBadGateway {

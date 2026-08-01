@@ -15,7 +15,6 @@ import (
 	"github.com/Darkness4/withny-dl/notify/notifier"
 	"github.com/Darkness4/withny-dl/state"
 	"github.com/Darkness4/withny-dl/telemetry/metrics"
-	"github.com/Darkness4/withny-dl/utils/ptr"
 	"github.com/Darkness4/withny-dl/utils/sync"
 	"github.com/Darkness4/withny-dl/utils/try"
 	"github.com/Darkness4/withny-dl/video/concat"
@@ -614,7 +613,7 @@ func (w *ChannelWatcher) Process(
 		OutputFileName: fnameStream,
 		Playlists:      playlists,
 	})
-	log = ptr.Ref(log.With().AnErr("download_error", dlErr).Logger())
+	log = new(log.With().AnErr("download_error", dlErr).Logger())
 	if dlErr != nil {
 		log.Err(dlErr).Msg("download failed")
 		span.RecordError(dlErr)

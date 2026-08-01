@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 	"text/template"
-
-	"github.com/Darkness4/withny-dl/utils/ptr"
 )
 
 // NotificationFormats is a collection of formats for notifications.
@@ -55,62 +53,62 @@ type NotificationTemplate struct {
 // DefaultNotificationFormats is the default notification formats.
 var DefaultNotificationFormats = NotificationFormats{
 	ConfigReloaded: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "config reloaded",
 		Message:  "",
 		Priority: 10,
 	},
 	LoginFailed: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "login failed",
 		Message:  "{{ .Error }}",
 		Priority: 10,
 	},
 	Panicked: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "panicked",
 		Message:  "{{ .Capture }}",
 		Priority: 10,
 	},
 	Idle: NotificationFormat{
-		Enabled: ptr.Ref(false),
+		Enabled: new(false),
 		Title:   "watching {{ .ChannelID }}",
 	},
 	PreparingFiles: NotificationFormat{
-		Enabled: ptr.Ref(false),
+		Enabled: new(false),
 		Title:   "preparing files for {{ .ChannelID }}",
 	},
 	Downloading: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "{{ .ChannelID }} is streaming",
 		Message:  "{{ .MetaData.Stream.Title }}",
 		Priority: 7,
 	},
 	PostProcessing: NotificationFormat{
-		Enabled:  ptr.Ref(false),
+		Enabled:  new(false),
 		Title:    "post-processing {{ .ChannelID }}",
 		Message:  "{{ .MetaData.Stream.Title }}",
 		Priority: 7,
 	},
 	Finished: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "{{ .ChannelID }} stream ended",
 		Message:  "{{ .MetaData.Stream.Title }}",
 		Priority: 7,
 	},
 	Error: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "watcher of {{ .ChannelID }} thrown an error",
 		Message:  "{{ .Error }}",
 		Priority: 10,
 	},
 	Canceled: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "stream download of {{ .ChannelID }} canceled",
 		Priority: 10,
 	},
 	UpdateAvailable: NotificationFormat{
-		Enabled:  ptr.Ref(true),
+		Enabled:  new(true),
 		Title:    "update available ({{ .Version }})",
 		Message:  "A new version ({{ .Version }}) of withny-dl is available. Please update.",
 		Priority: 7,
