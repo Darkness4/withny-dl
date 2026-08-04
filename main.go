@@ -12,57 +12,34 @@ import (
 	"github.com/Darkness4/withny-dl/cmd/watch"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var version = "dev"
 
 func init() {
-	log.Logger = log.Logger.Level(zerolog.InfoLevel)
+	log.Logger = log.Logger.Level(zerolog.InfoLevel).With().Caller().Logger()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }
 
-var app = &cli.App{
+var debugLevel bool
+var traceLevel bool
+
+var rootCmd = &cli.Command{
 	Name:    "withny-dl",
 	Version: version,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:       "debug",
-			EnvVars:    []string{"DEBUG"},
-			Value:      false,
-			HasBeenSet: true,
-			Action: func(_ *cli.Context, s bool) error {
-				if s {
-					log.Logger = log.Logger.Level(zerolog.DebugLevel)
-					zerolog.SetGlobalLevel(zerolog.DebugLevel)
-				}
-				return nil
-			},
+			Name:        "debug",
+			Sources:     cli.EnvVars("DEBUG"),
+			Value:       false,
+			Destination: &debugLevel,
 		},
 		&cli.BoolFlag{
-			Name:       "trace",
-			EnvVars:    []string{"TRACE"},
-			Value:      false,
-			HasBeenSet: true,
-			Action: func(_ *cli.Context, s bool) error {
-				if s {
-					log.Logger = log.Logger.Level(zerolog.TraceLevel)
-					zerolog.SetGlobalLevel(zerolog.TraceLevel)
-				}
-				return nil
-			},
-		},
-		&cli.BoolFlag{
-			Name:       "log-json",
-			EnvVars:    []string{"LOG_JSON"},
-			Value:      false,
-			HasBeenSet: true,
-			Action: func(_ *cli.Context, s bool) error {
-				if !s {
-					log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-				}
-				return nil
-			},
+			Name:        "trace",
+			Sources:     cli.EnvVars("TRACE"),
+			Value:       false,
+			Destination: &traceLevel,
 		},
 	},
 	Commands: []*cli.Command{
@@ -74,8 +51,16 @@ var app = &cli.App{
 }
 
 func main() {
-	log.Logger = log.Logger.With().Caller().Logger()
-	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
+	ctx := context.Background()
+	if debugLevel {
+		log.Logger = log.Logger.Level(zerolog.DebugLevel)
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+	if traceLevel {
+		log.Logger = log.Logger.Level(zerolog.TraceLevel)
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	}
+	if err := rootCmd.Run(ctx, os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatal().Err(err).Msg("application finished")
 	}
 }

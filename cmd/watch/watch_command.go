@@ -35,7 +35,7 @@ import (
 	"github.com/Darkness4/withny-dl/withny/api"
 	"github.com/Darkness4/withny-dl/withny/cleaner"
 	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -72,32 +72,32 @@ var Command = &cli.Command{
 			Value:       "WITHNY_DL_ENCRYPTION_KEY",
 			Destination: &encryptionKey,
 			Usage:       "An encryption secret to encrypt the cached refresh token.",
-			EnvVars:     []string{"WITHNY_ENCRYPTION_KEY"},
+			Sources:     cli.EnvVars("WITHNY_ENCRYPTION_KEY"),
 		},
 		&cli.StringFlag{
 			Name:        "pprof.listen-address",
 			Value:       ":3000",
 			Destination: &pprofListenAddress,
 			Usage:       "The address to listen on for pprof.",
-			EnvVars:     []string{"PPROF_LISTEN_ADDRESS"},
+			Sources:     cli.EnvVars("PPROF_LISTEN_ADDRESS"),
 		},
 		&cli.BoolFlag{
 			Name:        "traces.export",
 			Usage:       "Enable traces push. (To configure the exporter, set the OTEL_EXPORTER_OTLP_ENDPOINT environment variable, see https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/)",
 			Value:       false,
 			Destination: &enableTracesExporting,
-			EnvVars:     []string{"OTEL_EXPORTER_OTLP_TRACES_ENABLED"},
+			Sources:     cli.EnvVars("OTEL_EXPORTER_OTLP_TRACES_ENABLED"),
 		},
 		&cli.BoolFlag{
 			Name:        "metrics.export",
 			Usage:       "Enable metrics push. (To configure the exporter, set the OTEL_EXPORTER_OTLP_ENDPOINT environment variable, see https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/). Note that a Prometheus path is already exposed at /metrics.",
 			Value:       false,
 			Destination: &enableMetricsExporting,
-			EnvVars:     []string{"OTEL_EXPORTER_OTLP_METRICS_ENABLED"},
+			Sources:     cli.EnvVars("OTEL_EXPORTER_OTLP_METRICS_ENABLED"),
 		},
 	},
-	Action: func(cCtx *cli.Context) error {
-		ctx, stop := context.WithCancelCause(cCtx.Context)
+	Action: func(ctx context.Context, cmd *cli.Command) error {
+		ctx, stop := context.WithCancelCause(ctx)
 
 		// Trap cleanup
 		cleanChan := make(chan os.Signal, 1)
@@ -192,7 +192,7 @@ var Command = &cli.Command{
 		}()
 
 		cfgErr := ConfigReloader(ctx, configChan, func(ctx context.Context, config *Config) error {
-			return handleConfig(ctx, cCtx.App.Version, config)
+			return handleConfig(ctx, cmd.Version, config)
 		})
 		if cfgErr != nil {
 			log.Err(cfgErr).Msg("config reloader stopped")
