@@ -287,6 +287,7 @@ func handleConfig(ctx context.Context, version string, config *Config) error {
 	if config.Notifier.Enabled {
 		notifier.Notifier = notify.NewFormatedNotifier(
 			notify.NewShoutrrr(
+				hclient,
 				config.Notifier.URLs,
 				notify.IncludeTitleInMessage(config.Notifier.IncludeTitleInMessage),
 				notify.NoPriority(config.Notifier.NoPriority),
