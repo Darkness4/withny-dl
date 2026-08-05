@@ -428,11 +428,3 @@ jobs:
         run: |
           RELEASE_URL=$(gh release create "$TAG_NAME" --repo Darkness4/withny-dl -t "$TAG_MESSAGE" -F target/release.md --generate-notes --draft --prerelease="$IS_PRERELEASE" target/withny-* target/checksums.txt)
           echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_OUTPUT
-
-      - name: Notify release
-        env:
-          RELEASE_URL: ${{ steps.create_release.outputs.RELEASE_URL }}
-          GOTIFY_URL: ${{ secrets.GOTIFY_URL }}
-          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
-        run: |
-          curl -X POST "$GOTIFY_URL" -F "title=New Release: $TAG_NAME" -F "message=Release $RELEASE_URL"
