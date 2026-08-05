@@ -40,7 +40,7 @@ Automatically download withny livestream. Written in Go.
 - Very low CPU and RAM usage.
 - Minor fixes like graceful exit and crash recovery.
 - YAML/JSON config file.
-- Notification via [shoutrrr](https://github.com/containrrr/shoutrrr) which supports multiple notification services.
+- Notification via [shoutrrr](https://github.com/nicholas-fedor/shoutrrr) which supports multiple notification services.
 - Metrics, Traces and Continuous Profiling support.
 
 ## Installation
@@ -340,7 +340,7 @@ rateLimitAvoidance:
 
 ## Notify about the state of the watcher.
 ##
-## See: https://containrrr.dev/shoutrrr/latest
+## See: https://shoutrrr.nickfedor.com
 notifier:
   enabled: false
   includeTitleInMessage: false
@@ -489,7 +489,7 @@ Now, let's talk about limitations:
 - The session token can **only** be used once. After that, the API will return an Unauthorized error. This means that the session token in the `credentials.yaml` file should be updated the moment you get an unauthorized error.
 - Obviously, this is not optimal, so **withny-dl will do it for you and cache it in the directory specified by `cachedCredentialsFile`** file (with the right permissions). The cache is invalidated if the session token fails or is used. If it is invalidated, it will fallback to the `credentials.yaml` file. And if this fails too, the program will exit with an error. **The program will not be able to restart itself if the session token is invalid.**
 
-Therefore, it is **extremely recommended to setup a notification channel to be notified when the program stops**. You can find availables channel at [shoutrrr](https://containrrr.dev/shoutrrr/v0.8/services/discord/).
+Therefore, it is **extremely recommended to setup a notification channel to be notified when the program stops**. You can find availables channel at [shoutrrr](https://shoutrrr.nickfedor.com/latest/services/overview/).
 
 ### About the concatenation and the cleaning routine
 
