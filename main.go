@@ -24,6 +24,7 @@ func init() {
 
 var debugLevel bool
 var traceLevel bool
+var jsonLog bool
 
 var rootCmd = &cli.Command{
 	Name:    "withny-dl",
@@ -41,6 +42,12 @@ var rootCmd = &cli.Command{
 			Value:       false,
 			Destination: &traceLevel,
 		},
+		&cli.BoolFlag{
+			Name:        "log-json",
+			Sources:     cli.EnvVars("LOG_JSON"),
+			Value:       false,
+			Destination: &jsonLog,
+		},
 	},
 	Commands: []*cli.Command{
 		watch.Command,
@@ -48,18 +55,24 @@ var rootCmd = &cli.Command{
 		concat.Command,
 		clean.Command,
 	},
+	Before: func(ctx context.Context, _ *cli.Command) (context.Context, error) {
+		if debugLevel {
+			log.Logger = log.Logger.Level(zerolog.DebugLevel)
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
+		if traceLevel {
+			log.Logger = log.Logger.Level(zerolog.TraceLevel)
+			zerolog.SetGlobalLevel(zerolog.TraceLevel)
+		}
+		if !jsonLog {
+			log.Logger = log.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		}
+		return ctx, nil
+	},
 }
 
 func main() {
 	ctx := context.Background()
-	if debugLevel {
-		log.Logger = log.Logger.Level(zerolog.DebugLevel)
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
-	if traceLevel {
-		log.Logger = log.Logger.Level(zerolog.TraceLevel)
-		zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	}
 	if err := rootCmd.Run(ctx, os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatal().Err(err).Msg("application finished")
 	}
