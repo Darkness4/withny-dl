@@ -192,7 +192,7 @@ var Command = &cli.Command{
 		}()
 
 		cfgErr := ConfigReloader(ctx, configChan, func(ctx context.Context, config *Config) error {
-			return handleConfig(ctx, cmd.Version, config)
+			return handleConfig(ctx, cmd.Root().Version, config)
 		})
 		if cfgErr != nil {
 			log.Err(cfgErr).Msg("config reloader stopped")
